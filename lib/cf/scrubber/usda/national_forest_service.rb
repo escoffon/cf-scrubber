@@ -1,0 +1,837 @@
+require 'cgi'
+require 'net/http'
+require 'nokogiri'
+require 'json'
+require 'logger'
+
+ROOT_URL = 'https://www.fs.fed.us'
+
+uri = URI(ROOT_URL)
+
+module Cf
+  module Scrubber
+    # The namespace for scrubbers for USDA sites.
+
+    module Usda
+      # Scrubber for national forest campgrounds.
+      # This scrubber walks the National Forest Service web site to extract information about campgrounds.
+
+      class NationalForestService < Cf::Scrubber::Base
+        # The name of the organization dataset (the National Forest Service, which is part of USDA)
+
+        ORGANIZATION_NAME = 'usda:nfs'
+
+        # The URL of the National Forest Service web site
+
+        ROOT_URL = 'https://www.fs.fed.us'
+
+        # @!visibility private
+        # State codes and state names.
+
+        STATE_CODES = {
+          AL: 'Alabama',
+          AK: 'Alaska',
+          AZ: 'Arizona',
+          AR: 'Arkansas',
+          CA: 'California',
+          CO: 'Colorado',
+          CT: 'Connecticut',
+          DE: 'Delaware',
+          FL: 'Florida',
+          GA: 'Georgia',
+          HI: 'Hawaii',
+          ID: 'Idaho',
+          IL: 'Illinois',
+          IN: 'Indiana',
+          IA: 'Iowa',
+          KS: 'Kansas',
+          KY: 'Kentucky',
+          LA: 'Louisiana',
+          ME: 'Maine',
+          MD: 'Maryland',
+          MA: 'Massachusetts',
+          MI: 'Michigan',
+          MN: 'Minnesota',
+          MS: 'Mississippi',
+          MO: 'Missouri',
+          MT: 'Montana',
+          NE: 'Nebraska',
+          NV: 'Nevada',
+          NH: 'New Hampshire',
+          NJ: 'New Jersey',
+          NM: 'New Mexico',
+          NY: 'New York',
+          NC: 'North Carolina',
+          ND: 'North Dakota',
+          OH: 'Ohio',
+          OK: 'Oklahoma',
+          OR: 'Oregon',
+          PA: 'Pennsylvania',
+          RI: 'Rhode Island',
+          SC: 'South Carolina',
+          SD: 'South Dakota',
+          TN: 'Tennessee',
+          TX: 'Texas',
+          UT: 'Utah',
+          VT: 'Vermont',
+          VA: 'Virginia',
+          WA: 'Washington',
+          WV: 'West Virginia',
+          WI: 'Wisconsin',
+          WY: 'Wyoming',
+
+          AS: 'American Samoa',
+          DC: 'District of Columbia',
+          FM: 'Federated States of Micronesia',
+          GU: 'Guam',
+          MH: 'Marshall Islands',
+          MP: 'Northern Mariana Islands',
+          PW: 'Palau',
+          PR: 'Puerto Rico',
+          VI: 'Virgin Islands'
+
+          # AE: 'Armed Forces Africa',
+          # AA: 'Armed Forces Americas',
+          # AE: 'Armed Forces Canada',
+          # AE: 'Armed Forces Europe',
+          # AE: 'Armed Forces Middle East',
+          # AP: 'Armed Forces Pacific'
+        }
+
+        # Key translations.
+        # This array maps the normalized labels in the "At a Glance" section to standard keys in a
+        # campground's info hash.
+        # Note that +:lon+, +:lat+, and +:elevation+ are actually placed outside the info hash,
+        # in a campground's +:location+ attribute instead.
+
+        KEYS_MAP = {
+          area_amenities: :amenities,
+          best_season: :best_season,
+          busiest_season: :busiest_season,
+          closest_towns: :closest_towns,
+          current_conditions: :current_conditions,
+          elevation: :elevation,
+          fees: :fees,
+          information_center: :information_center,
+          latitude: :lat,
+          length: :length,
+          longitude: :lon,
+          open_season: :open_season,
+          operated_by: :operated_by,
+          operational_hours: :hours_of_operation,
+          passes: :passes,
+          permit_info: :permit_info,
+          reservations: :reservations,
+          restrictions: :restrictions,
+          restroom: :restroom,
+          usage: :usage,
+          water: :water
+        }
+
+        # Initializer.
+        #
+        # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
+        #  value of {Cf::Scrubber::Usda::NationalForestService::ROOT_URL}
+        # @param opts [Hash] Additional configuration options for the scrubber.
+        #  See {Cf::Scrubber::Base#initializer}.
+
+        def initialize(root_url = nil, opts = {})
+          @states = nil
+          @forests = {}
+
+          root_url = ROOT_URL unless root_url.is_a?(String)
+          super(root_url, opts)
+        end
+
+        # @!attribute [r] states
+        # A hash containing the list of states (and territories) from the NFS web site.
+        #
+        # @return [Hash] the list of states; keys are strings containing the state name, and values are the
+        #  corresponding state identifiers. If the current value is not defined, calls {#build_state_list}
+        #  to load it.
+        
+        def states()
+          build_state_list() if @states.nil?
+          @states
+        end
+
+        # Get the list of forests for a given state identifier.
+        # If the list has not been loaded, calls {#build_forest_list} to load it.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        #
+        # @return [Hash] Returns the list of forests in the given state; keys are strings containing the
+        #  forest name, and values are the corresponding forest identifiers.
+        #  If the current value is not defined, calls {#build_forest_list} to load it.
+        #  If <i>state_id</i> contains a bad state, or there are no forests in the given state, returns
+        #  an empty hash.
+
+        def forests_for_state(state_id)
+          state_id = normalize_state_id(state_id)
+          
+          # we have to account for states that don't have any forests (and therefore are not in the
+          # states list): if state_id is nil, then there is no such state in the state list
+
+          if state_id
+            build_forest_list(state_id) unless @forests.has_key?(state_id)
+            @forests[state_id]
+          else
+            {}
+          end
+        end
+
+        # Get the list of states and state IDs.
+        # Scans the main page of the NFS web site, looking for the states selector element, and
+        # builds the states list from its +option+ elements.
+        #
+        # @return [Hash] Returns a hash where the keys are state names (as strings), and the values are the
+        #  corresponding state identifiers. This hash is also cached and is available after the call via
+        #  the attribute {#states}.
+
+        def build_state_list()
+          @states = {}
+
+          res = get(self.root_url, {
+                      headers: {
+                        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                      }
+                    })
+
+          if res.is_a?(Net::HTTPOK)
+            doc = Nokogiri::HTML(res.body)
+            doc.css("#find-a-forest-state option").each do |n|
+              if n['value'].length > 0
+                k = n['value']
+                s = ''
+                n.search('text()').each { |t| s << t.serialize }
+                @states[s] = k.to_i
+              end
+            end
+          end
+
+          @states
+        end
+
+        # Get the list of forests for a given state IDs.
+        # Makes an Ajax call into the NFS Ajax API to get the HTML fragment containing the forest selector
+        # element, and extracts forest name and identifier from its +option+ elements.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        #
+        # @return [Hash] the list of forests in the given state; keys are strings containing the forest name,
+        #  and values are the corresponding forest identifiers. If the current value is not defined, calls
+        #  {#build_forest_list} to load it.
+        #  This hash is also cached and is available after the call via {#forests_for_state}.
+
+        def build_forest_list(state_id)
+          state_id = normalize_state_id(state_id)
+
+          # It looks like we need to send a valid :form_build_id and :form_id, so we first get the home
+          # page and extract those two values, and them supply them to the POST
+
+          form_id, form_build_id = get_form_identifiers()
+          js_cookie = CGI::Cookie.new("has_js", "1")
+          url = self.root_url + '/system/ajax'
+          res = post(url, {
+                       'state' => state_id,
+                       'name' => '',
+                       'form_build_id' => form_build_id,
+                       'form_id' => form_id,
+                       '_triggering_element_name' => 'state'
+                     }, {
+                       headers: {
+                         'Accept' => 'application/json, text/javascript, */*; q=0.01',
+                         'Accept-Encoding' => 'gzip, deflate, br'
+                       },
+                       cookies: [ js_cookie.to_s]
+                     })
+
+          if res.is_a?(Net::HTTPOK)
+            forests = {}
+            cmd = find_insert_command(JSON.parse(res.body))
+            unless cmd.nil?
+              doc = Nokogiri::HTML(cmd['data'])
+              doc.css("#wrapper-state-parks select option").each do |n|
+                if n['value'].length > 0
+                  k = n['value']
+                  s = ''
+                  n.search('text()').each { |t| s << t.serialize }
+                  forests[s] = k.to_i
+                end
+              end
+            end
+
+            @forests[state_id] = forests
+            forests
+          else
+            nil
+          end
+        end
+
+        # Get the home page for a given forest identifier.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        #
+        # @return [Net::HTTPResponse] Returns a response object containing the home page for the forest.
+
+        def get_forest_home_page(state_id, forest_id)
+          state_id = normalize_state_id(state_id)
+          forest_id = normalize_forest_id(state_id, forest_id)
+          js_cookie = CGI::Cookie.new("has_js", "1")
+          res = post(self.root_url, {
+                       'state' => state_id,
+                       'name' => forest_id,
+                       'form_build_id' => 'form-MJQbK6EUpm0ALbpFKBEvxv7MUTTSy2St78gYr7JEkpQ',
+                       'form_id' => 'fs_search_form_find_a_forest',
+                       'op' => 'Go'
+                     }, {
+                       headers: {
+                         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                       },
+                       cookies: [ js_cookie.to_s ]
+                     })
+
+          if res.is_a?(Net::HTTPRedirection)
+            res = get(res['Location'], {
+                        headers: {
+                          'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                        }
+                      })
+          end
+
+          res
+        end
+
+        # Get a secondary page for a given forest identifier.
+        # Secondary pages are accessible from the +Home+ list in the main page, which contains links to the
+        # secondary pages.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state name,
+        #  and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param page_name [String] The name of the secondary page to load; this is the label of the list item
+        #  that holds the link to the page.
+        #
+        # @return [Net::HTTPResponse] Returns a response object containing a secondary page for the forest.
+
+        def get_forest_secondary_page(state_id, forest_id, page_name)
+          r_res = nil
+          f_res = get_forest_home_page(state_id, forest_id)
+          if f_res.is_a?(Net::HTTPOK)
+            doc = Nokogiri::HTML(f_res.body)
+            elem, href = get_forest_left_menu_node(f_res, doc, page_name)
+            r_res = get(href)
+          end
+
+          r_res
+        end
+
+        # Get the "recreation" page for a given forest identifier.
+        # This method is a wrapper for {#get_forest_secondary_page} with page name set to +Recreation+.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        #
+        # @return [Net::HTTPResponse] Returns a response object containing the recreation page for the forest.
+
+        def get_forest_recreation_page(state_id, forest_id)
+          get_forest_secondary_page(state_id, forest_id, 'Recreation')
+        end
+
+        # Get a "recreation" subpage for a given forest identifier.
+        # This method looks up the given named item in the recreation list, and returns its associated page.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param subpage_name [String] The name of the recreation subpage to load; this is the label of the list
+        #  item that holds the link to the page.
+        #
+        # @return [Net::HTTPResponse] Returns a response object containing the recreation subpage for the forest.
+
+        def get_forest_recreation_subpage(state_id, forest_id, subpage_name)
+          s_res = nil
+          r_res = get_forest_recreation_page(state_id, forest_id)
+          if r_res.is_a?(Net::HTTPOK)
+            s_href = nil
+            doc = Nokogiri::HTML(r_res.body)
+            elem, href = get_forest_left_menu_node(r_res, doc, subpage_name)
+            s_res = get(href)
+          end
+
+          s_res
+        end
+
+        # Get the camping page for a given forest identifier.
+        # This method is a wrapper for {#get_forest_recreation_subpage} with page name set to
+        # <tt>Camping & Cabins</tt>.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        #
+        # @return [Net::HTTPResponse] Returns a response object containing the camping subpage for the forest.
+
+        def get_forest_camping_page(state_id, forest_id)
+          get_forest_recreation_subpage(state_id, forest_id, 'Camping & Cabins')
+        end
+
+        # Get a camping subpage for a given forest identifier.
+        # This method grabs the camping page using {#get_forest_camping_page}, extracts the link to the
+        # page labeled <i>subpage_name</i>, and returns that page.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param subpage_name [String] The name of the camping subpage to load; this is the label of the list
+        #  item that holds the link to the page.
+        #
+        # @return [Net::HTTPResponse] Returns a response object containing the camping subpage for the forest.
+
+        def get_forest_camping_subpage(state_id, forest_id, subpage_name)
+          s_res = nil
+          c_res = get_forest_camping_page(state_id, forest_id)
+          if c_res.is_a?(Net::HTTPOK)
+            s_href = nil
+            doc = Nokogiri::HTML(c_res.body)
+            elem, href = get_forest_center_menu_node(c_res, doc, subpage_name)
+            s_res = get(href)
+          end
+
+          s_res
+        end
+
+        # Get the campgrounds page for a given forest identifier.
+        # This method is a wrapper for {#get_forest_camping_subpage} with page name set to
+        # <tt>Campground Camping</tt>.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        #
+        # @return [Net::HTTPResponse] Returns a response object containing the campgrounds page for the forest.
+
+        def get_forest_campgrounds_page(state_id, forest_id)
+          get_forest_camping_subpage(state_id, forest_id, 'Campground Camping')
+        end
+
+        # Get the list of campgrounds for a given forest identifier.
+        # This method calls {#get_forest_campgrounds_page} and parses its contents to build the list of
+        # campgrounds.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state 
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param with_details [Boolean] If +true+, also load the data from the campground details page.
+        #
+        # @return [Array<Hash>] Returns an array of hashes containing the list of campgrounds.
+        #  The hashes contain the following key/value pairs:
+        #  - *:area* If this key is present (and +true+, which it typically is if present), the campground
+        #    element is actually a grouping element in the list, and its detail page points to an area detail
+        #    page, rather than a real campground.
+        #  - *:name* A string containing the campground name.
+        #  - *:url* A string containing the URL to the campground page.
+        #  - *:state* The name of the state in which the campground is located.
+        #  - *:state_id* The identifier of the state in which the campground is located.
+        #  - *:forest* The name of the forest (or grassland) in which the campground is located.
+        #  - *:forest_id* The identifier of the forest (or grassland) in which the campground is located.
+        #  - *:location* If <i>with_details</i> is +true+, this key is present and its value is a hash containing
+        #    location information (+:lat+, +:lon+, +:elevation+) if available.
+        #  - *:additional_info* If <i>with_details</i> is +true+, this key is present and its value is a hash
+        #    containing additional information if available.
+
+        def get_forest_campgrounds(state_id, forest_id, with_details = false)
+          campgrounds = []
+          res = get_forest_campgrounds_page(state_id, forest_id)
+          if res.is_a?(Net::HTTPOK)
+            state_id = normalize_state_id(state_id)
+            state_name = normalize_state_name(state_id)
+            forest_id = normalize_forest_id(state_id, forest_id)
+            forest_name = normalize_forest_name(state_id, forest_id)
+
+            self.logger.info { "get_forest_campgrounds(#{state_name}, #{forest_name})" }
+
+            doc = Nokogiri::HTML(res.body)
+            root_element = doc.css("div#centercol > table > tr")[2]
+            home_element = root_element.css("ul")
+            home_element.css('li > a').each do |n|
+              c = {
+                organization: ORGANIZATION_NAME,
+                name: n.text(),
+                url: adjust_href(n['href'], res.uri),
+                state: state_name,
+                state_id: state_id,
+                forest: forest_name,
+                forest_id: forest_id
+              }
+
+              span = n.parent.css('span')
+              div = n.parent.css('div')
+              if (span.length > 0) || (div.length > 0)
+                # This <li> element has a span and div that are used to trigger and view the display of area
+                # summaries, and therefore this <li> is not really a campground, but rather an area item.
+                # Just to be anal, we confirm that the two go together.
+
+                div_id = div[0]['id']
+                span_onclick = span[0]['onclick']
+                if span_onclick.include?(div_id)
+                  c[:area] = true
+                end
+              end
+
+              if with_details
+                c.merge!(get_campground_details(c))
+              end
+
+              campgrounds << c
+            end
+          else
+            self.logger.warn { "get_forest_campgrounds(#{state_name}, #{forest_name}) gets #{res}" }
+          end
+
+          campgrounds
+        end
+
+        # Get the list of campgrounds for a given state identifier.
+        # This method calls {#get_forest_campgrounds} for each
+        # forest in the state with the given identifier, and merges the return value in a single array.
+        #
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param with_details [Boolean] If +true+, also load the data from the campground details page.
+        #
+        # @return [Array<Hash>] Returns an array of hashes containing the list of campgrounds.
+        #  See {#get_forest_campgrounds} for a description of the hash contents.
+
+        def get_state_campgrounds(state_id, with_details = false)
+          camps = []
+          forests_for_state(state_id).each do |forest_id|
+            camps.concat(get_forest_campgrounds(state_id, forest_id, with_details))
+          end
+
+          camps
+        end
+
+        # Given a campground hash, extract details from its details page.
+        #
+        # @param campground [Hash] The campground hash, as returned by {#get_forest_campgrounds}.
+        # @option campground [String] :name The campground name.
+        # @option campground [String] :url The URL to the campground detail page.
+        #
+        # @return [Hash] Returns a hash of campground properties.
+
+        def get_campground_details(campground)
+          dh = {}
+          res = get(campground[:url])
+          if res.is_a?(Net::HTTPOK)
+            self.logger.info { "get_campground_details(#{campground[:name]}, #{campground[:state]}, #{campground[:forest]})" }
+
+            doc = Nokogiri::HTML(res.body)
+
+            dh[:additional_info] = extract_at_a_glance_details(doc, campground)
+            dh[:location] = {}
+
+            loc_box = doc.css("div#rightcol div.box > p.boxheading")
+            loc_box.each do |n|
+              if n.text() == 'Location'
+                dh[:location] = extract_location_details(n.parent, campground)
+                break
+              end
+            end
+          else
+            self.logger.warn { "get_campground_details(#{campground[:name]}, #{campground[:state]}, #{campground[:forest]}) gets #{res}" }
+          end
+
+          dh
+        end
+
+        # Normalize the state identifier.
+        # If <i>state_id</i> is an integer, returns its value; if it is a string, looks up the corresponding
+        # state identifier from the states map in {#states}.
+        #
+        # @param state_id [Integer, String] The state identifier (if an integer), or the state name
+        #  (if a string).
+        #
+        # @return [Integer] Returns the state identifier, as described above.
+
+        def normalize_state_id(state_id)
+          if state_id.is_a?(String)
+            if state_id.length == 2
+              sc = state_id.upcase.to_sym
+              s = STATE_CODES[sc]
+              self.logger.warn("unknown state code: #{sc}") if s.nil?
+              state_id = self.states()[s]
+            else
+              s = state_id
+              state_id = self.states()[state_id]
+              self.logger.warn("unknown state name: #{s}") if state_id.nil?
+            end
+          end
+          state_id
+        end
+
+        # Normalize the forest or grassland identifier.
+        # If <i>forest_id</i> is an integer, returns its value; if it is a string, looks up the corresponding
+        # forest identifier from the forests map in {#forests_for_state}.
+        #
+        # @param state_id [Integer, String] The state identifier (if an integer), or the state name
+        #  (if a string).
+        # @param forest_id [Integer, String] The forest/grassland identifier (if an integer), or the
+        #  forest/grassland name (if a string).
+        #
+        # @return [Integer] Returns the forest/grassland identifier, as described above.
+
+        def normalize_forest_id(state_id, forest_id)
+          if forest_id.is_a?(String)
+            s = forest_id
+            f = forests_for_state(state_id)
+            forest_id = f[forest_id]
+            self.logger.warn("unknown forest or grassland name: #{s}") if forest_id.nil?
+          end
+          forest_id
+        end
+
+        # Normalize the state name.
+        # If <i>state_name</i> is a string, returns its value; if it is an integer, looks up the corresponding
+        # state name from the states map in {#states}.
+        #
+        # @param state_name [String, Integer] The state name (if a string), or the state identfier
+        #  (if an integer).
+        #
+        # @return [String] Returns the state name, as described above.
+
+        def normalize_state_name(state_name)
+          return state_name if state_name.is_a?(String)
+
+          # let's do a linear search: there are more or less 50 entries in the map.
+
+          s = state_name
+          self.states.each do |sk, sv|
+            return sk if sv == state_name
+          end
+          self.logger.warn("unknown state identifier: #{stata_name}")
+          nil
+        end
+
+        # Normalize the forest or grassland name.
+        # If <i>forest_name</i> is a string, returns its value; if it is an integer, looks up the corresponding
+        # forest name from the forests map in {#forests_for_state}.
+        #
+        # @param state_id [Integer, String] The state identifier (if an integer), or the state name
+        #  (if a string).
+        # @param forest_name [String, Integer] The forest/grassland name (if a string), or the
+        #  forest/grassland identifier (if an integer).
+        #
+        # @return [String] Returns the forest/grassland name, as described above.
+
+        def normalize_forest_name(state_id, forest_name)
+          return forest_name if forest_name.is_a?(String)
+
+          # There are no more that a couple dozen forests per state, so we can do a linear search
+
+          forests_for_state(state_id).each do |fk, fv|
+            return fk if forest_name == fv
+          end
+
+          self.logger.warn("unknown forest or grassland identifier: #{forest_name}")
+          nil
+        end
+
+        # Given a state name, return its corresponding two-letter code.
+        #
+        # @param name [String] The state name.
+        #
+        # @return [String, nil] If _name_ is a valid state name, returns its two-letter code; otherwise,
+        #  returns +nil+.
+
+        def self.state_code(name)
+          STATE_CODES.each do |sk, sv|
+            return sk.to_s if sv == name
+          end
+
+          nil
+        end
+
+        # Given a two-letter state code, return the corresponding state name.
+        #
+        # @param code [String] The state code.
+        #
+        # @return [String, nil] If _code_ is a valid state code, returns its state name; otherwise,
+        #  returns +nil+.
+
+        def self.state_name(code)
+          ck = code.upcase.to_sym
+          STATE_CODES[ck]
+        end
+
+        # Given a state name, return its corresponding two-letter code.
+        # This is a wrapper around {Cf::Scrubber::Usda::NationalForestService.state_code}.
+        #
+        # @param name [String] The state name.
+        #
+        # @return [String, nil] If _name_ is a valid state name, returns its two-letter code; otherwise,
+        #  returns +nil+.
+
+        def state_code(name)
+          self.class.state_code(name)
+        end
+
+        # Given a two-letter state code, return the corresponding state name.
+        # This is a wrapper around {Cf::Scrubber::Usda::NationalForestService.state_name}.
+        #
+        # @param code [String] The state code.
+        #
+        # @return [String, nil] If _code_ is a valid state code, returns its state name; otherwise,
+        #  returns +nil+.
+
+        def state_name(code)
+          self.class.state_name(code)
+        end
+          
+        private
+        
+        def get_form_identifiers()
+          form_build_id = ''
+          form_id = ''
+
+          res = get(self.root_url, {
+                      headers: {
+                        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                      }
+                    })
+
+          if res.is_a?(Net::HTTPOK)
+            doc = Nokogiri::HTML(res.body)
+            doc.css("#fs-search-form-find-a-forest input[name=form_build_id]").each do |n|
+              if n['value'].length > 0
+                form_build_id = n['value']
+              end
+            end
+            doc.css("#fs-search-form-find-a-forest input[name=form_id]").each do |n|
+              if n['value'].length > 0
+                form_id = n['value']
+              end
+            end
+          end
+
+          [ form_id, form_build_id ]
+        end
+
+        def find_insert_command(json_res)
+          json_res.each do |e|
+            return e if (e['command'] == 'insert') && e['method'].nil?
+          end
+
+          nil
+        end
+
+        def adjust_href(href, base_uri)
+          if href[0] == '/'
+            n_uri = URI(href)
+            uri = base_uri.dup
+            uri.path = n_uri.path
+            uri.query = n_uri.query
+          else
+            uri = URI(href)
+          end
+
+          uri.to_s
+        end
+
+        def get_forest_left_menu_node(res, doc, node_label)
+          root_element = doc.css("div#leftcol > table > tr")[2]
+          home_element = root_element.css("div.navleft ul")
+          home_element.css('li > a > span').each do |n|
+            t = n.text()
+            if t == node_label
+              return [ n.parent.parent, adjust_href(n.parent['href'], res.uri) ]
+            end
+          end
+
+          [ nil, nil ]
+        end
+
+        def get_forest_center_menu_node(res, doc, node_label)
+          root_element = doc.css("div#centercol > table > tr")[1]
+          home_element = root_element.css("ul")
+          home_element.css('li > a > strong').each do |n|
+            t = n.text()
+            if t == node_label
+              return [ n.parent.parent, adjust_href(n.parent['href'], res.uri) ]
+            end
+          end
+
+          [ nil, nil ]
+        end
+
+        def extract_location_details(box, campground)
+          h = {}
+          cur = nil
+          box.css('div.right-box').each do |n|
+            k = n.text().strip
+            if cur.is_a?(Symbol)
+              h[cur] = k.to_f
+              cur = nil
+            else
+              if k =~ /([A-Z][a-z]+) :/
+                m = Regexp.last_match
+                cur = m[1].downcase.to_sym
+                if KEYS_MAP.has_key?(cur)
+                  cur = KEYS_MAP[cur].to_sym
+                else  
+                  self.logger.warn("unsupported location key '#{m[1]}' for campground (#{campground[:state]})(#{campground[:forest]})(#{campground[:name]})")
+                end
+                
+              end
+            end
+          end
+
+          h
+        end
+
+        def extract_at_a_glance_details(doc, campground)
+          h = {}
+          doc.css("div#centercol td > h2").each do |n|
+            if n.text() == 'At a Glance'
+              g = n
+              while true do
+                g = g.next_sibling()
+                if (g.name == 'div') && (g['class'] == 'tablecolor')
+                  g.css('table > tr').each do |tr|
+                    th = tr.css('th')[0]
+                    td = tr.css('td')[0]
+                    ths = th.text()
+                    s = ths.gsub(/\s+/, ' ').strip.gsub(/:$/, '').gsub(' ', '_').downcase.to_sym
+                    if KEYS_MAP.has_key?(s)
+                      s = KEYS_MAP[s].to_sym
+                    else
+                      self.logger.warn("unsupported at-a-glance key '#{ths}' for campground (#{campground[:state]})(#{campground[:forest]})(#{campground[:name]})")
+                    end
+                    h[s] = td.inner_html().strip
+                  end
+                  break
+                end
+              end
+              break
+            end
+          end
+
+          h
+        end
+      end
+    end
+  end
+end

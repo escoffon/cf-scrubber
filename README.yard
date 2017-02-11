@@ -1,0 +1,16 @@
+== The cf-scrubber gem
+
+This gem contains a collection of scrubber code to extract campground data from a number of web sites.
+The bulk of the gem is in the hierarchy rooted at {Cf::Scrubber::Base}. Subclasses contain the scrubbing
+code targeted to specific web sites.
+
+The following web sites are currently supported:
+- The National Forest Service ({Cf::Scrubber::Usda::NationalForestService}. (The National Forest Service
+  is part of the US Department of Agriculture.)
+
+In addition to the scrubber classses, the gem provides a number of scripts in the +bin+ directory:
+- +usda_nfs_states+ lists the states with national forests or grasslands.
+- +usda_nfs_forests+ lists the forests in one or more states.
+- +usda_nfs_campgrounds+ lists the campgrounds (grouped by forest) in one or more states.
+
+

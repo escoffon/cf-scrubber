@@ -1,0 +1,54 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber'
+require 'optparse'
+
+Options = Struct.new(:states, :show_index, :level)
+
+class Parser
+  def self.parse(options)
+    args = Options.new(nil, false, Logger::Warn)
+
+    opt_parser = OptionParser.new do |opts|
+      opts.banner = "Usage: usda_nfs_forests [options]\n\nLists national forests or grasslands for one or more states"
+
+      opts.on("-sSTATES", "--states=STATES", "Comma-separated list of states for which to list forests. Shows all states if not given. You may use two-character state codes.") do |sl|
+        args.states = sl.split(',').map do |s|
+          t = s.strip
+          (t.length == 2) ? t.upcase : t
+        end
+      end
+
+      opts.on("-i", "--with-index", "If present, emit the forest indeces as well as names") do
+        args.show_index = true
+      end
+
+      opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger clsss (WARN, INFO, etc...). Defaults to WARN.") do |l|
+        args.level = "Logger::#{l}"
+      end
+
+      opts.on("-h", "--help", "Show help") do
+        puts opts
+        exit
+      end
+    end
+
+    opt_parser.parse!(options)
+    return args
+  end
+end
+options = Parser.parse(ARGV)
+
+nfs = Cf::Scrubber::Usda::NationalForestService.new(nil, :logger_level => options.level)
+options.states = nfs.states if options.states.nil?
+options.states.each do |s|
+  print("-- #{s}\n")
+  f = nfs.forests_for_state(s)
+  f.keys.sort.each do |fk|
+    if options.show_index
+      printf("  %-42s: %d\n", fk, f[fk])
+    else
+      print("  #{fk}\n")
+    end
+  end
+end

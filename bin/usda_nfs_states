@@ -1,0 +1,55 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber'
+require 'optparse'
+
+Options = Struct.new(:show_index, :level, :format)
+
+FORMATS = [ :full, :short ]
+
+class Parser
+  def self.parse(options)
+    args = Options.new(false, Logger::WARN, :full)
+
+    opt_parser = OptionParser.new do |opts|
+      opts.banner = "Usage: usda_nfs_states [options]\n\nLists states with a national forest or grassland"
+
+      opts.on("-i", "--with-index", "If present, emit the state indeces as well as names") do |n|
+        args.show_index = true
+      end
+
+      opts.on("-fFORMAT", "--format=FORMAT", "The output format to use: full or short (two-letter code).") do |f|
+        f = f.to_sym
+        args.format = f if FORMATS.include?(f)
+      end
+
+      opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger clsss (WARN, INFO, etc...). Defaults to WARN.") do |l|
+        args.level = "Logger::#{l}"
+      end
+
+      opts.on("-h", "--help", "Show help") do
+        puts opts
+        exit
+      end
+    end
+
+    opt_parser.parse!(options)
+    return args
+  end
+end
+options = Parser.parse(ARGV)
+
+nfs = Cf::Scrubber::Usda::NationalForestService.new(nil, :logger_level => options.level)
+s = nfs.states
+s.keys.sort.each do |sk|
+  if options.show_index
+    if options.format == :short
+      printf("%s: %d\n", nfs.state_code(sk), s[sk])
+    else
+      printf("%-18s: %d\n", sk, s[sk])
+    end
+  else
+    sk = nfs.state_code(sk) if options.format == :short
+    print("#{sk}\n")
+  end
+end

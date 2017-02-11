@@ -1,0 +1,74 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber'
+require 'optparse'
+require 'json'
+
+Options = Struct.new(:states, :show_areas, :show_details, :format, :level)
+
+FORMATS = [ :raw, :json ]
+
+class Parser
+  def self.parse(options)
+    args = Options.new(nil, false, false, :raw, Logger::WARN)
+
+    opt_parser = OptionParser.new do |opts|
+      opts.banner = "Usage: usda_nfs_campgrounds [options]\n\nLists campgrounds for one or more states"
+
+      opts.on("-sSTATES", "--states=STATES", "Comma-separated list of states for which to list campgrounds. Shows all states if not given. You may use two-character state codes.") do |sl|
+        args.states = sl.split(',').map do |s|
+          t = s.strip
+          (t.length == 2) ? t.upcase : t
+        end
+      end
+
+      opts.on("-d", "--with-details", "If present, emit the additional info and location info.") do
+        args.show_details = true
+      end
+
+      opts.on("-a", "--show-areas", "If present, also emit campgrounds that are marked as areas.") do
+        args.show_details = true
+      end
+
+      opts.on("-fFORMAT", "--format=FORMAT", "The output format to use: raw or json.") do |f|
+        f = f.to_sym
+        args.format = f if FORMATS.include?(f)
+      end
+
+      opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger clsss (WARN, INFO, etc...). Defaults to WARN.") do |l|
+        args.level = "Logger::#{l}"
+      end
+
+      opts.on("-h", "--help", "Show help") do
+        puts opts
+        exit
+      end
+    end
+
+    opt_parser.parse!(options)
+    return args
+  end
+end
+options = Parser.parse(ARGV)
+
+nfs = Cf::Scrubber::Usda::NationalForestService.new(nil, :logger_level => options.level)
+options.states = nfs.states if options.states.nil?
+options.states.each do |s|
+  print("#---- #{s}\n")
+  f = nfs.forests_for_state(s)
+  f.keys.sort.each do |fk|
+    print("#  -- #{fk}\n")
+    nfs.get_forest_campgrounds(s, fk, options.show_details).each do |c|
+      if !c[:area] || options.show_areas
+        case options.format
+        when :raw
+          print("#{c}\n")
+        when :json
+          print("#{JSON.generate(c)}\n")
+        else
+          print("#{c}\n")
+        end
+      end
+    end
+  end
+end
