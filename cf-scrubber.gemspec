@@ -2,14 +2,16 @@
 
 Gem::Specification.new do |s|
   s.name        = 'cf-scrubber'
-  s.version     = '0.1.0'
-  s.date        = '2017-02-09'
+  s.version     = '0.2.0'
+  s.date        = '2017-02-11'
   s.summary     = "Campfinder scrubbers"
-  s.description = "A gem of scrubbers for various web sites that contain campgound information."
+  s.description = "A gem of scrubbers for various web sites that contain campground information."
   s.authors     = [ "Emil Scoffone" ]
   s.email       = 'emil@scoffone.com'
   s.files       = [ "lib/cf/scrubber.rb", 'lib/cf/scrubber/base.rb',
                     'lib/cf/scrubber/usda/national_forest_service.rb',
+                    'lib/cf/scrubber/usda/script.rb', 'lib/cf/scrubber/usda/script/script.rb',
+                    'lib/cf/scrubber/usda/script/states.rb',
                     'bin/usda_nfs_states', 'bin/usda_nfs_forests', 'usda_nfs_campgrounds',
                     'Rakefile',
                     'test/test_usda_nfs.rb',

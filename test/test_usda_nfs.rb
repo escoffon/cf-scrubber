@@ -6,6 +6,9 @@ class UsdaNFSTest < Minitest::Test
     assert_equal 'CA', Cf::Scrubber::Usda::NationalForestService.state_code('California')
     assert_equal 'RI', Cf::Scrubber::Usda::NationalForestService.state_code('Rhode Island')
 
+    assert_equal 'CA', Cf::Scrubber::Usda::NationalForestService.state_code('CA')
+    assert_equal 'RI', Cf::Scrubber::Usda::NationalForestService.state_code('RI')
+
     assert_equal 'Alaska', Cf::Scrubber::Usda::NationalForestService.state_name('AK')
     assert_equal 'Alaska', Cf::Scrubber::Usda::NationalForestService.state_name('ak')
     assert_equal 'Alaska', Cf::Scrubber::Usda::NationalForestService.state_name(:AK)
@@ -20,6 +23,9 @@ class UsdaNFSTest < Minitest::Test
     
     assert_equal 'CA', nfs.state_code('California')
     assert_equal 'RI', nfs.state_code('Rhode Island')
+
+    assert_equal 'CA', nfs.state_code('CA')
+    assert_equal 'RI', nfs.state_code('RI')
 
     assert_equal 'Alaska', nfs.state_name('AK')
     assert_equal 'Alaska', nfs.state_name('ak')

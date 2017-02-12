@@ -1,18 +1,295 @@
 require 'cgi'
+require 'uri'
 require 'net/http'
 require 'nokogiri'
 require 'json'
 require 'logger'
-
-ROOT_URL = 'https://www.fs.fed.us'
-
-uri = URI(ROOT_URL)
 
 module Cf
   module Scrubber
     # The namespace for scrubbers for USDA sites.
 
     module Usda
+      # A node in the campground tree from the scrubbed camping page.
+
+      class CampNode
+        # The amount by which the level value changes for each level increment.
+        # This is the indentation value (in pixels) of items in the HTML.
+
+        LEVEL_DELTA = 25
+
+        # @!visibility private
+        ROOT_LEVEL = -25
+
+        # @!attribute [r]
+        # The node's URI.
+        #
+        # @return [String] the node's URI.
+
+        attr_reader :uri
+
+        # @!attribute [r]
+        # The node's level (as a value of the +margin-left+ CSS parameter).
+        #
+        # @return [Integer] the node's level.
+
+        attr_reader :level
+
+        # @!attribute [r]
+        # The node's parent.
+        #
+        # @return [Cf::Scrubber::Usda::CampNode] the node's parent.
+
+        attr_reader :parent
+
+        # @!attribute [r]
+        # The node's children.
+        #
+        # @return [Array<Cf::Scrubber::Usda::CampNode>] the node's children.
+
+        attr_reader :children
+
+        # Initializer.
+        # The node is initialized with an empty list of children and a +nil+ parent.
+        #
+        # @param uri [String] The URI associated with this node.
+        # @param level [Integer] The node's level.
+
+        def initialize(uri, level)
+          @uri = uri
+          @level = level
+          @parent = nil
+          @children = []
+        end
+
+        # Add a child to the node.
+        # This method adds _obj_ to the list of children, sets its parent to +self+, and sets the
+        # level to the level plus {LEVEL_DELTA}.
+        #
+        # @param obj [Cf::Scrubber::Usda::CampNode] The object to add to the children.
+
+        def add_child(obj)
+          obj.set_parent(self)
+          obj.set_level(@level + LEVEL_DELTA)
+          @children << obj
+        end
+
+        # Depth-first traversal of a tree.
+        # Uses +self+ as the root of the tree.
+        #
+        # @yield [n] Gives the current node to the block.
+
+        def depth_first(&blk)
+          @children.each { |c| c.depth_first(&blk) }
+          blk.call(self)
+        end
+
+        # Width-first traversal of a tree.
+        # Uses +self+ as the root of the tree.
+        #
+        # @yield [n] Gives the current node to the block.
+
+        def width_first(&blk)
+          blk.call(self)
+          @children.each { |c| c.width_first(&blk) }
+        end
+
+        protected
+
+        # Set the parent.
+        #
+        # @param parent [Cf::Scrubber::Usda::CampNode] The node's parent.
+
+        def set_parent(parent)
+          @parent = parent
+        end
+
+        # Set the level.
+        #
+        # @return [Integer] the node's level.
+
+        def set_level(level)
+          @level = level
+        end
+      end
+
+      # Container for the scrubbed contents of a camping page.
+      # Instances of this class hold the scrubbed information from one of the camping subpages.
+      # A camping subpage contains a +ul+ element whose +li+ elements list the campgrounds associated
+      # with the page (for example, <tt>Campground Camping</tt> campgrounds in the Tahoe National Forest).
+      # This list is flat in the HTML (all +li+ elements are siblings), but it may be visually hierarchical,
+      # since the +li+ are generated with custom +style+ attributes that indent some.
+      # We are interested in this hierarchy, because the campgrounds will be at its leaves; therefore, the
+      # scrubber extracts that information from the CSS properties of each element.
+      #
+      # The scrubbed contents contain the following data structures:
+      # - An array of string containing the URIs to the scrubbed +li+ elements.
+      # - A hash whose keys are URIs, and whose values are hashes containing each +li+ element's scrubbed
+      #   information (*:name* and *:uri*).
+      # - The root node of the hierarchy, which is the entry point of the campground tree.
+      #
+      # Note that the +actid+ parameter has been stripped from the URIs; this makes it easier to compare
+      # scrubbed results from multiple camping subpages (and eventually to share the hash of campgrounds).
+
+      class CampingPage
+        # @!attribute [r]
+        # The name of the subpage (for example, <tt>Campground Camping</tt>).
+        #
+        # @return [String] the name of the subpage.
+
+        attr_reader :name
+
+        # @!attribute [r]
+        # The list of campgrounds. This is the flat list corresponding to the +li+items, and it contains
+        # the URIs to the campgrounds.
+        #
+        # @return [Array<String>] the list of campground URIs.
+
+        attr_reader :camp_list
+
+        # @!attribute [r]
+        # The campground properties. This hash is keyed by campground URI, and contains hashes with the
+        # campground properties.
+        #
+        # @return [Hash] the campground properties.
+
+        attr_reader :campgrounds
+
+        # @!attribute [r]
+        # The root of the campground hierarchy.
+        #
+        # @return [Cf::Scrubber::Usda::CampNode] the root node for the +li+ hierarchy.
+
+        attr_reader :root
+
+        # Initializer.
+        # The page is initialized with an empty root node.
+        #
+        # @param name [Hash] The page name.
+        # @param campgrounds [Hash] An optional hash of campgrounds that have already been loaded; used
+        #  to avoid picking up campground data multiple times.
+
+        def initialize(name, campgrounds = {})
+          @name = name
+          @campgrounds = campgrounds
+          @camp_list = []
+          @root = nil
+        end
+
+        # Scrub a page content.
+        #
+        # @param res [Net::HTTPResponse] The response containing the page to scrub.
+
+        def scrub(res)
+          @root = Cf::Scrubber::Usda::CampNode.new(nil, Cf::Scrubber::Usda::CampNode::ROOT_LEVEL)
+          @camp_list = []
+
+          cur_node = @root
+
+          doc = Nokogiri::HTML(res.body)
+
+          # the list of campgrounds is in the <ul> immediately below <td> from the third row in the
+          # centercolumn table
+
+          root_element = doc.css("div#centercol > table > tr")[2]
+          home_element = root_element.css("td > ul")
+
+          # iterate over all children of <ul>, so that we get only the <li> that are immediate children
+
+          home_element.children.each do |n|
+            if n.name.downcase == 'li'
+              a = nil
+              n.children.each do |e|
+                if e.name.downcase == 'a'
+                  a = e
+                  break
+                end
+              end
+
+              unless a.nil?
+                camp_name = a.text()
+                camp_url = adjust_href(a['href'], res.uri)
+                camp_level = margin_level(n)
+
+                if campgrounds.has_key?(camp_url)
+                  c = campgrounds[camp_url]
+                else
+                  c = { name: camp_name, url: camp_url }
+                  campgrounds[camp_url] = c
+                end
+
+                @camp_list << c
+
+                # OK now the tough part: figure out where this guy goes in the tree
+                # A negative delta means the node is uplevel from current, so we need to walk back
+                # up the tree.
+                # A zero delta means it is at the same level as current, so we also need to walk back, once
+                # A positive delta means the node is downlevel, and we place in the children of current;
+                # however, if there are skipped levels, we need to create dummy nodes for them
+
+                delta = camp_level - cur_node.level
+                if delta <= 0
+                  while delta <= 0
+                    cur_node = cur_node.parent
+                    delta += Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
+                  end
+                else
+                  nl = cur_node.level
+                  while delta > Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
+                    nl += Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
+                    nn = Cf::Scrubber::Usda::CampNode.new(nil, nl)
+                    delta -= Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
+                    cur_node.add_child(nn)
+                    cur_node = nn
+                  end
+                end
+
+                # OK, now we can add it in the right place
+
+                nc = Cf::Scrubber::Usda::CampNode.new(camp_url, camp_level)
+                cur_node.add_child(nc)
+                cur_node = nc
+              end
+            end
+          end
+        end
+
+        private
+
+        def parse_style(style)
+          h = {}
+          style.split(';').each do |e|
+            idx = e.index(':')
+            k = e[0,idx].to_sym
+            v = e[idx+1,e.length]
+            h[k] = v
+          end
+          h
+        end
+
+        def margin_level(node)
+          hs = parse_style(node['style'])
+          ((hs[:margin].split(' '))[3]).to_i
+        end
+
+        def adjust_href(href, base_uri)
+          n_uri = URI(href)
+
+          qa = n_uri.query.split('&').select { |e| e !~ /^actid=/ }
+          q = qa.join('&')
+
+          if href[0] == '/'
+            uri = base_uri.dup
+            uri.path = n_uri.path
+          else
+            uri = URI(href)
+          end
+
+          uri.query = q
+          uri.to_s
+        end
+      end
+
       # Scrubber for national forest campgrounds.
       # This scrubber walks the National Forest Service web site to extract information about campgrounds.
 
@@ -24,6 +301,27 @@ module Cf
         # The URL of the National Forest Service web site
 
         ROOT_URL = 'https://www.fs.fed.us'
+
+        # The name of the forest camping subpage listing cabin rentals.
+
+        CAMPGROUND_CABINS_SUBPAGE = 'Cabin Rentals'
+
+        # The name of the forest camping subpage listing campgrounds.
+
+        CAMPGROUND_CAMPING_SUBPAGE = 'Campground Camping'
+
+        # The name of the forest camping subpage listing dispersed camping campgrounds.
+        # This page seems to list areas that allow off-campground camping more than organized campgrounds.
+
+        CAMPGROUND_DISPERSED_CAMPING_SUBPAGE = 'Dispersed Camping'
+
+        # The name of the forest camping subpage listing group camping campgrounds.
+
+        CAMPGROUND_GROUP_CAMPING_SUBPAGE = 'Group Camping'
+
+        # The name of the forest camping subpage listing campgrounds that can hold RVs.
+
+        CAMPGROUND_RV_CAMPING_SUBPAGE = 'RV Camping'
 
         # @!visibility private
         # State codes and state names.
@@ -412,24 +710,9 @@ module Cf
           s_res
         end
 
-        # Get the campgrounds page for a given forest identifier.
-        # This method is a wrapper for {#get_forest_camping_subpage} with page name set to
-        # <tt>Campground Camping</tt>.
-        #
-        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
-        #
-        # @return [Net::HTTPResponse] Returns a response object containing the campgrounds page for the forest.
-
-        def get_forest_campgrounds_page(state_id, forest_id)
-          get_forest_camping_subpage(state_id, forest_id, 'Campground Camping')
-        end
-
         # Get the list of campgrounds for a given forest identifier.
-        # This method calls {#get_forest_campgrounds_page} and parses its contents to build the list of
-        # campgrounds.
+        # This method calls {#get_forest_camping_subpage} for {CAMPGROUND_CAMPING_SUBPAGE} and parses its
+        # contents to build the list of campgrounds.
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state 
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
@@ -448,55 +731,47 @@ module Cf
         #  - *:state_id* The identifier of the state in which the campground is located.
         #  - *:forest* The name of the forest (or grassland) in which the campground is located.
         #  - *:forest_id* The identifier of the forest (or grassland) in which the campground is located.
-        #  - *:location* If <i>with_details</i> is +true+, this key is present and its value is a hash containing
-        #    location information (+:lat+, +:lon+, +:elevation+) if available.
+        #  - *:location* If <i>with_details</i> is +true+, this key is present and its value is a hash
+        #    containing location information (+:lat+, +:lon+, +:elevation+) if available.
         #  - *:additional_info* If <i>with_details</i> is +true+, this key is present and its value is a hash
         #    containing additional information if available.
 
         def get_forest_campgrounds(state_id, forest_id, with_details = false)
-          campgrounds = []
-          res = get_forest_campgrounds_page(state_id, forest_id)
-          if res.is_a?(Net::HTTPOK)
-            state_id = normalize_state_id(state_id)
-            state_name = normalize_state_name(state_id)
-            forest_id = normalize_forest_id(state_id, forest_id)
-            forest_name = normalize_forest_name(state_id, forest_id)
+          state_id = normalize_state_id(state_id)
+          state_name = normalize_state_name(state_id)
+          forest_id = normalize_forest_id(state_id, forest_id)
+          forest_name = normalize_forest_name(state_id, forest_id)
 
+          campgrounds = []
+          res = get_forest_camping_subpage(state_id, forest_id, CAMPGROUND_CAMPING_SUBPAGE)
+          if res.is_a?(Net::HTTPOK)
             self.logger.info { "get_forest_campgrounds(#{state_name}, #{forest_name})" }
 
-            doc = Nokogiri::HTML(res.body)
-            root_element = doc.css("div#centercol > table > tr")[2]
-            home_element = root_element.css("ul")
-            home_element.css('li > a').each do |n|
-              c = {
-                organization: ORGANIZATION_NAME,
-                name: n.text(),
-                url: adjust_href(n['href'], res.uri),
-                state: state_name,
-                state_id: state_id,
-                forest: forest_name,
-                forest_id: forest_id
-              }
+            boilerplate = {
+              organization: ORGANIZATION_NAME,
+              state: state_name,
+              state_id: state_id,
+              forest: forest_name,
+              forest_id: forest_id
+            }
 
-              span = n.parent.css('span')
-              div = n.parent.css('div')
-              if (span.length > 0) || (div.length > 0)
-                # This <li> element has a span and div that are used to trigger and view the display of area
-                # summaries, and therefore this <li> is not really a campground, but rather an area item.
-                # Just to be anal, we confirm that the two go together.
+            pg = CampingPage.new(CAMPGROUND_CAMPING_SUBPAGE)
+            pg.scrub(res)
+            pg.root.depth_first do |n|
+              # OK so we only emit leaf nodes.
+              # That's the heuristic here: we assume that the USFS web pages list campgrounds in the
+              # leaf nodes
 
-                div_id = div[0]['id']
-                span_onclick = span[0]['onclick']
-                if span_onclick.include?(div_id)
-                  c[:area] = true
+              if n.uri && (n.children.count == 0)
+                c = pg.campgrounds[n.uri]
+                c.merge!(boilerplate)
+
+                if with_details
+                  c.merge!(get_campground_details(c))
                 end
-              end
 
-              if with_details
-                c.merge!(get_campground_details(c))
+                campgrounds << c
               end
-
-              campgrounds << c
             end
           else
             self.logger.warn { "get_forest_campgrounds(#{state_name}, #{forest_name}) gets #{res}" }
@@ -656,10 +931,16 @@ module Cf
         #
         # @return [String, nil] If _name_ is a valid state name, returns its two-letter code; otherwise,
         #  returns +nil+.
+        #  If _name_ is already a valid two-letter code, returns _name_ converted to uppercase.
 
         def self.state_code(name)
-          STATE_CODES.each do |sk, sv|
-            return sk.to_s if sv == name
+          if name.length == 2
+            n = name.upcase
+            return n if STATE_CODES.has_key?(n.to_sym)
+          else
+            STATE_CODES.each do |sk, sv|
+              return sk.to_s if sv == name
+            end
           end
 
           nil
