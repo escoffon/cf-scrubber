@@ -419,7 +419,7 @@ module Cf
           operational_hours: :hours_of_operation,
           passes: :passes,
           permit_info: :permit_info,
-          :'rentals_&_guides': :rentals_and_guides,
+          'rentals_&_guides': :rentals_and_guides,
           reservations: :reservations,
           restrictions: :restrictions,
           restroom: :restroom,
