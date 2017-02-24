@@ -285,6 +285,7 @@ var parkCoordinates = new Array(
 	["Zmudowski", 36.83632, -121.80147, 572, "SB"]);
 
 There is also a list of parks in an inline <script> on the main page; see ca_park_list.js.
+This is possibly not in https://www.parks.ca.gov, but definitely in https://www.parks.ca.gov/ParkIndex
 This list seems to be used to do the filtering. For example, the first element in the list of parks:
 
 var vParksJson = [
@@ -311,3 +312,51 @@ for the web site.
 
 And also https://www.parks.ca.gov/javascript/parkindex.js seems to have code to manage the filtered display
 of parks based on various options (for example, by feature using displayFeatureResults())
+
+The feature ids:
+
+81:	
+82:	
+83:	
+84:	
+85:	
+86:	
+87:	
+89:	
+90:	
+91:	
+92:	
+93:	
+94:	
+95:	
+96:	
+97:	
+98:	
+99:	
+100:	
+101:	
+102:	
+103:	
+104:	
+105:	
+106:	
+107:	
+108:	
+109:	
+110:	
+111:	
+112:	
+113:	
+114:	
+115:	
+116:	
+117:	
+118:	
+119:	
+120:	
+121:	
+122:	
+123:	
+124:	
+125:	
+126:	

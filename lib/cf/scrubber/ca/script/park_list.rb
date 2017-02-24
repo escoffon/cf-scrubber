@@ -1,18 +1,19 @@
 require 'optparse'
 require 'logger'
 require 'cf/scrubber'
-require 'cf/scrubber/usda/script'
+require 'cf/scrubber/ca/script'
 
 module Cf
   module Scrubber
-    module Usda
+    module Ca
       module Script
-        # Framework class for iterating through the states with national forests or grasslands.
+        # Framework class for extracting the park list.
 
-        class States < Cf::Scrubber::Script::Base
+        class ParkList < Cf::Scrubber::Script::Base
           # A class to parse command line arguments.
           #
           # The base class defines the following options:
+          # - *-C* (*--campgrounds*) lists only campgrounds.
           # - *-vLEVEL* (*--level=LEVEL*) to set the logger's output level.
           # - *-h* (*--help*) to emit a help statement.
           #
@@ -31,6 +32,10 @@ module Cf
 
             def initialize()
               opt_parser = OptionParser.new do |opts|
+                opts.on("-C", "--campgrounds", "If present, only campgrounds are listed.") do |l|
+                  self.options[:campgrounds] = true
+                end
+
                 opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger clsss (WARN, INFO, etc...). Defaults to WARN.") do |l|
                   self.options[:level] = "Logger::#{l}"
                 end
@@ -41,7 +46,7 @@ module Cf
                 end
               end
 
-              super(opt_parser, { level: Logger::WARN } )
+              super(opt_parser, { campgrounds: false, level: Logger::WARN } )
             end
           end
 
@@ -54,20 +59,20 @@ module Cf
           end
 
           # Processor.
-          # This is the framework method; it fetches the list of states from the USFS web site, iterates
-          # over each, yielding to the block provided.
+          # This is the framework method; it fetches the list of activities from the CA state park system's
+          # web site, and yields to the block.
           #
-          # @yield [nfs, s, idx] passes the following arguments to the block:
-          #  - *nfs* is the active instance of {Cf::Scrubber::Usda::NationalForestService}.
-          #  - *s* is the state name.
-          #  - *idx* is the corresponding state identifier.
+          # @yield [sp, act] passes the following arguments to the block:
+          #  - *sp* is the active instance of {Cf::Scrubber::Ca::StateParks}.
+          #  - *pd* is a hash containing data for a park.
 
           def process(&blk)
-            nfs = Cf::Scrubber::Usda::NationalForestService.new(nil,
-                                                                :logger_level => self.parser.options[:level])
-            s = nfs.states
-            s.keys.sort.each do |sk|
-              blk.call(nfs, sk, s[sk])
+            sp = Cf::Scrubber::Ca::StateParks.new(nil, :logger_level => self.parser.options[:level])
+            pl = (self.parser.options[:campgrounds]) ? sp.select_campground_list : sp.get_park_list_raw
+            if pl.is_a?(Array)
+              pl.each do |pd|
+                blk.call(sp, pd)
+              end
             end
           end
         end

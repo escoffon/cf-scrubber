@@ -1,15 +1,15 @@
 require 'optparse'
 require 'logger'
 require 'cf/scrubber'
-require 'cf/scrubber/usda/script'
+require 'cf/scrubber/ca/script'
 
 module Cf
   module Scrubber
-    module Usda
+    module Ca
       module Script
-        # Framework class for iterating through the states with national forests or grasslands.
+        # Framework class for listing activity identifiers.
 
-        class States < Cf::Scrubber::Script::Base
+        class Activities < Cf::Scrubber::Script::Base
           # A class to parse command line arguments.
           #
           # The base class defines the following options:
@@ -54,20 +54,17 @@ module Cf
           end
 
           # Processor.
-          # This is the framework method; it fetches the list of states from the USFS web site, iterates
-          # over each, yielding to the block provided.
+          # This is the framework method; it fetches the list of activities from the CA state park system's
+          # web site, and yields to the block.
           #
-          # @yield [nfs, s, idx] passes the following arguments to the block:
-          #  - *nfs* is the active instance of {Cf::Scrubber::Usda::NationalForestService}.
-          #  - *s* is the state name.
-          #  - *idx* is the corresponding state identifier.
+          # @yield [sp, act] passes the following arguments to the block:
+          #  - *sp* is the active instance of {Cf::Scrubber::Ca::StateParks}.
+          #  - *act* is a hash containing activity information: *:activity_id* and *:name*.
 
           def process(&blk)
-            nfs = Cf::Scrubber::Usda::NationalForestService.new(nil,
-                                                                :logger_level => self.parser.options[:level])
-            s = nfs.states
-            s.keys.sort.each do |sk|
-              blk.call(nfs, sk, s[sk])
+            sp = Cf::Scrubber::Ca::StateParks.new(nil, :logger_level => self.parser.options[:level])
+            sp.get_activity_list.each do |act|
+              blk.call(sp, act)
             end
           end
         end

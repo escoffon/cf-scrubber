@@ -17,6 +17,22 @@ module Cf
         'Accept-Language' => 'en-US,en;q=0.8'
       }
 
+      # The standard set of keys for the additional info hash in scrubbed data.
+      # Subclasses may define other keys.
+
+      ADDITIONAL_INFO_KEYS = [
+                              :activities,
+                              :amenities,
+                              :fees,
+                              :information_center,
+                              :hours_of_operation,
+                              :reservations,
+                              :restrictions,
+                              :restroom,
+                              :usage,
+                              :water
+                             ]
+
       # Initializer.
       #
       # @param root_url [String] The root URL (if any) for the web site to scrub.

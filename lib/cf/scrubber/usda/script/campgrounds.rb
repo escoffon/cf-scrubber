@@ -8,7 +8,7 @@ module Cf
       module Script
         # Framework class for iterating through campgrounds for various states and forests.
 
-        class Campgrounds < Cf::Scrubber::Usda::Script::Base
+        class Campgrounds < Cf::Scrubber::Script::Base
           # A class to parse command line arguments.
           #
           # The base class defines the following options:
@@ -28,7 +28,7 @@ module Cf
           #     end
           #   end
 
-          class Parser < Cf::Scrubber::Usda::Script::Parser
+          class Parser < Cf::Scrubber::Script::Parser
             # Initializer.
 
             def initialize()

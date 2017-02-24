@@ -5,4 +5,5 @@ end
 
 require 'cf/scrubber/base'
 require 'cf/scrubber/usda/national_forest_service'
+require 'cf/scrubber/ca/state_parks'
 

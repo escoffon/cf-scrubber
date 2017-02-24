@@ -1,0 +1,52 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/ca/script'
+
+class PrintParkList < Cf::Scrubber::Ca::Script::ParkList
+  class Parser < Cf::Scrubber::Ca::Script::ParkList::Parser
+    DATA_FORMATS = [ :raw, :json, :name ]
+
+    def initialize()
+      rv = super()
+
+      self.options.merge!({ data_format: :raw })
+
+      p = self.parser
+
+      p.banner = "Usage: ca_parks_activities [options]\n\nLists activities for CA state parks"
+
+      p.banner = "Usage: ca_parks_list [options]\n\nList CA state parks"
+
+      p.on_head("-DDATAFORMAT", "--data-format=DATAFORMAT", "The output format to use: raw, json, or name.") do |f|
+        f = f.to_sym
+        self.options[:data_format] = f if DATA_FORMATS.include?(f)
+      end
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintParkList::Parser.new)
+  end
+
+  def exec()
+    self.process do |sp, pd|
+      case self.parser.options[:data_format]
+      when :raw
+        print("#{pd}\n");
+      when :json
+        print("#{JSON.generate(pd)}\n")
+      when :name
+        print("#{pd['long_name']} (#{pd['type_desc']}) -- #{pd['page_id']}\n")
+      else
+        print("#{pd}\n")
+      end
+
+    end
+  end
+end
+
+script = PrintParkList.new()
+script.parser.parse(ARGV)
+script.exec

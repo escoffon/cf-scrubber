@@ -1,0 +1,31 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/ca/script'
+
+class PrintActivities < Cf::Scrubber::Ca::Script::Activities
+  class Parser < Cf::Scrubber::Ca::Script::Activities::Parser
+    def initialize()
+      rv = super()
+
+      p = self.parser
+
+      p.banner = "Usage: ca_parks_activities [options]\n\nLists activities for CA state parks"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintActivities::Parser.new)
+  end
+
+  def exec()
+    self.process do |sp, act|
+      printf("%4d : %s\n", act[:activity_id], act[:name]);
+    end
+  end
+end
+
+script = PrintActivities.new()
+script.parser.parse(ARGV)
+script.exec

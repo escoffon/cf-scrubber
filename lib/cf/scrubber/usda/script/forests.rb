@@ -1,6 +1,7 @@
 require 'optparse'
 require 'logger'
 require 'cf/scrubber'
+require 'cf/scrubber/usda/script'
 
 module Cf
   module Scrubber
@@ -8,7 +9,7 @@ module Cf
       module Script
         # Framework class for iterating through forests or grasslands for various states.
 
-        class Forests < Cf::Scrubber::Usda::Script::Base
+        class Forests < Cf::Scrubber::Script::Base
           # A class to parse command line arguments.
           #
           # The base class defines the following options:
@@ -26,7 +27,7 @@ module Cf
           #     end
           #   end
 
-          class Parser < Cf::Scrubber::Usda::Script::Parser
+          class Parser < Cf::Scrubber::Script::Parser
             # Initializer.
 
             def initialize()

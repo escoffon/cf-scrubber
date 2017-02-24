@@ -9,8 +9,8 @@ module Cf
   end
 end
 
-require 'cf/scrubber/usda/script/script'
+require 'cf/scrubber/script'
+
 require 'cf/scrubber/usda/script/states'
 require 'cf/scrubber/usda/script/forests'
 require 'cf/scrubber/usda/script/campgrounds'
-
