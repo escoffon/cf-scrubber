@@ -16,7 +16,7 @@ module Cf
       class StateParks < Cf::Scrubber::Base
         # The name of the organization dataset (the CA State Park System, which is part of CA)
 
-        ORGANIZATION_NAME = 'ca:state_parks'
+        ORGANIZATION_NAME = 'ca:state'
 
         # The (fixed) region name is +California+, since these are CA state parks.
 
@@ -135,7 +135,13 @@ module Cf
           'State Marine Reserve' => 'SMR',
           'State Historic Park' => 'SHP',
           'State Natural Reserve' => 'SNR',
-          'State Beach' => 'SB'
+          'State Beach' => 'SB',
+          'Park Property' => 'PP',
+          'Point of Interest' => 'PoI',
+          'State Marine Park' => 'SMP',
+          'State Vehicular Recreation Area' => 'SVRA',
+          # This one looks like an outlier...
+          'Wayside Campground' => 'WG'
         }
 
         # Initializer.
@@ -315,7 +321,7 @@ module Cf
           ptype = pd['type_desc']
           abbr = PARK_TYPES[ptype]
           unless abbr
-            self.logger.warn { "convert_park_data: no abbreviation for park type (#{ptype})" }
+            self.logger.warn { "convert_park_data: no abbreviation for park type (#{ptype}) for park (#{pd['name']}" }
           end
 
           add = {}
@@ -332,8 +338,8 @@ module Cf
             region: REGION_NAME,
             area: pd['Region'],
             location: {
-              latitude: pd['Latitude'],
-              longitude: pd['Longitude']
+              lat: pd['Latitude'],
+              lon: pd['Longitude']
             },
             additional_info: add
           }
