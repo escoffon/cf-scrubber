@@ -51,13 +51,13 @@ module Cf
         # @!attribute [r]
         # The parser to use.
         #
-        # @return [Cf::Scrubber::Usda::Script::Parser] the options parser to use.
+        # @return [Cf::Scrubber::Script::Parser] the options parser to use.
 
         attr_reader :parser
 
         # Initializer.
         #
-        # @param parser [Cf::Scrubber::Usda::Script::Parser] The parser to use.
+        # @param parser [Cf::Scrubber::Script::Parser] The parser to use.
 
         def initialize(parser)
           @parser = parser
@@ -65,7 +65,7 @@ module Cf
 
         # Processor.
         # This is the framework method; it is declared here to define a signature, but it *must* be
-        # implemented by subclasses.
+        # implemented by subclasses: the base implementation raises an exception.
         #
         # Subclass implementations are expected to iterate as needed, yielding to the block _blk_.
         # The block parameters are subclass-specific.
