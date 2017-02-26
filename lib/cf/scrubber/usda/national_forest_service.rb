@@ -427,6 +427,11 @@ module Cf
           water: :water
         }
 
+        # @!visibility private
+
+        ADDITIONAL_INFO_KEYS = [ :amenities, :hours_of_operation, :information_center, :open_season,
+                                 :reservations, :restrictions, :restroom, :water ]
+
         # Initializer.
         #
         # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
@@ -817,7 +822,9 @@ module Cf
 
             doc = Nokogiri::HTML(res.body)
 
-            dh[:additional_info] = extract_at_a_glance_details(doc, campground)
+            dh[:at_a_glance] = extract_at_a_glance_details(doc, campground)
+# still needs some work
+#            dh[:blurb] = extract_blurb_details(doc, campground)
             dh[:location] = {}
 
             loc_box = doc.css("div#rightcol div.box > p.boxheading")
@@ -827,6 +834,8 @@ module Cf
                 break
               end
             end
+
+            dh[:additional_info] = convert_at_a_glance_details(dh[:at_a_glance], doc, campground)
           else
             self.logger.warn { "get_campground_details(#{campground[:name]}, #{campground[:state]}, #{campground[:forest]}) gets #{res}" }
           end
@@ -1109,6 +1118,37 @@ module Cf
               end
               break
             end
+          end
+
+          h
+        end
+
+        def extract_blurb_details(doc, campground)
+          blurb = ''
+          hline = doc.css("div#centercol td > dif.hline")[0]
+          cur = hline
+          loop = true
+          while loop
+            cur.next_sibling
+            if cur.name.downcase == 'p'
+              # As a heuristic, if the paragraph contains <strong> elements, we assume it's a special
+              # note and we skip it.
+
+              if cur.css("strong").length < 1
+                blurb = cur.text()
+                loop = false
+              end
+            end
+          end
+
+          blurb
+        end
+
+        def convert_at_a_glance_details(at_a_glance, doc, campground)
+          h = {}
+          
+          ADDITIONAL_INFO_KEYS.each do |k|
+            h[k] = at_a_glance[k] if at_a_glance.has_key?(k)
           end
 
           h

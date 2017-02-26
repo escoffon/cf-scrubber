@@ -104,7 +104,7 @@ module Cf
 
         # Activity codes for information center facilities.
 
-        INFORMATION_ACTIVITY_CODES = [ '87', '95', '105', '107', '109', '119' ]
+        LEARNING_ACTIVITY_CODES = [ '87', '95', '105', '107', '109', '119' ]
 
         # Activity codes for restroom facilities.
 
@@ -314,10 +314,15 @@ module Cf
         #
         # @param pd [Hash] The park data, as one of the elements returned by {#get_park_list_raw}
         #  and related methods.
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the blurb).
         #
         # @return [Hash] Returns a hash that contains normalized, converted park data.
 
-        def convert_park_data(pd)
+        def convert_park_data(pd, with_details = true)
+          uri = park_uri(pd)
+          blurb = (with_details) ? get_park_blurb(pd) : ''
+
           ptype = pd['type_desc']
           abbr = PARK_TYPES[ptype]
           unless abbr
@@ -325,9 +330,10 @@ module Cf
           end
 
           add = {}
+          add[:campsite_types] = list_activities(pd, CAMPING_ACTIVITY_CODES).join(', ')
           add[:activities] = list_activities(pd, ACTIVITY_ACTIVITY_CODES).join(', ')
           add[:amenities] = list_activities(pd, AMENITY_ACTIVITY_CODES).join(', ')
-          add[:information_center] = list_activities(pd, INFORMATION_ACTIVITY_CODES).join(', ')
+          add[:learning] = list_activities(pd, LEARNING_ACTIVITY_CODES).join(', ')
           add[:restroom] = list_activities(pd, RESTROOM_ACTIVITY_CODES).join(', ')
           add[:water] = list_activities(pd, WATER_ACTIVITY_CODES).join(', ')
 
@@ -364,6 +370,18 @@ module Cf
           end
 
           l
+        end
+
+        def get_park_blurb(pd)
+          res = get(park_uri(pd), {
+                      headers: {
+                        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                      }
+                    })
+          if res.is_a?(Net::HTTPOK)
+            doc = Nokogiri::HTML(res.body)
+            
+          end
         end
       end
     end
