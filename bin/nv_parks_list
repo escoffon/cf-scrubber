@@ -1,9 +1,9 @@
 #! /usr/bin/env ruby
 
-require 'cf/scrubber/ca/script'
+require 'cf/scrubber/nv/script'
 
-class PrintParkList < Cf::Scrubber::Ca::Script::ParkList
-  class Parser < Cf::Scrubber::Ca::Script::ParkList::Parser
+class PrintParkList < Cf::Scrubber::Nv::Script::ParkList
+  class Parser < Cf::Scrubber::Nv::Script::ParkList::Parser
     DATA_FORMATS = [ :raw, :json, :name ]
 
     def initialize()
@@ -13,7 +13,7 @@ class PrintParkList < Cf::Scrubber::Ca::Script::ParkList
 
       p = self.parser
 
-      p.banner = "Usage: ca_parks_list [options]\n\nList CA state parks"
+      p.banner = "Usage: nv_parks_list [options]\n\nList NV state parks"
 
       p.on_head("-DDATAFORMAT", "--data-format=DATAFORMAT", "The output format to use: raw, json, or name.") do |f|
         f = f.to_sym
@@ -36,7 +36,7 @@ class PrintParkList < Cf::Scrubber::Ca::Script::ParkList
       when :json
         print("#{JSON.generate(pd)}\n")
       when :name
-        print("#{pd['long_name']} (#{pd['type_desc']}) -- #{pd['page_id']}\n")
+        print("#{pd[:name]} -- #{pd[:uri]}\n")
       else
         print("#{pd}\n")
       end

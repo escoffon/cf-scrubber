@@ -127,6 +127,16 @@ module Cf
                                   '124', '125', '126'
                                  ]
 
+        # @!visibility private
+        ACTIVITY_MAP = {
+          :campsite_types => CAMPING_ACTIVITY_CODES,
+          :activities => ACTIVITY_ACTIVITY_CODES,
+          :amenities => AMENITY_ACTIVITY_CODES,
+          :learning => LEARNING_ACTIVITY_CODES,
+          :restroom => RESTROOM_ACTIVITY_CODES,
+          :water => WATER_ACTIVITY_CODES
+        }
+
         # Abbreviations for park types.
 
         PARK_TYPES = {
@@ -330,12 +340,10 @@ module Cf
           end
 
           add = {}
-          add[:campsite_types] = list_activities(pd, CAMPING_ACTIVITY_CODES).join(', ')
-          add[:activities] = list_activities(pd, ACTIVITY_ACTIVITY_CODES).join(', ')
-          add[:amenities] = list_activities(pd, AMENITY_ACTIVITY_CODES).join(', ')
-          add[:learning] = list_activities(pd, LEARNING_ACTIVITY_CODES).join(', ')
-          add[:restroom] = list_activities(pd, RESTROOM_ACTIVITY_CODES).join(', ')
-          add[:water] = list_activities(pd, WATER_ACTIVITY_CODES).join(', ')
+          ACTIVITY_MAP.each do |ak, al|
+            a = list_activities(pd, al)
+            add[ak] = a.join(', ') if a.count > 0
+          end
 
           cpd = {
             organization: ORGANIZATION_NAME,
@@ -350,6 +358,7 @@ module Cf
             additional_info: add
           }
 
+          self.logger.info { "extracted park data for (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
           cpd
         end
 

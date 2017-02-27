@@ -1,0 +1,162 @@
+The main page for the NV state parks list is at parks.nv.gov/parks.
+Most if not all the info we need is embedded in the DOM. The page displays "park cards" with info on each
+park. These cards also contain the park's feature lists, and that info is used (seemingly...) for the filtering.
+
+The card is laid out somewhat like this:
+div.parkCard-wrapper
+  div.parkCard-item
+    div.parkCard-item-front
+    div.parkCard-item-back
+The -item-front has the visible part of the card, and the -item-back stores the park data in its DOM.
+From the -item-back root:
+a.parkCard-item-back-linkWrapper (get the park details URI from its href attribute)
+ul.parkCard-item-back-amenities (container of amenities available in this park)
+  li
+    span (get the amenity label from its aria-label attribute, e.g. "ADA Campsites", "Bike Trails")
+      i.icon (get the amenity type from the icon class, e.g. icon-symbols-ada-campsites)
+
+For example, Beaver Dam:
+  <li>
+    <span class="hint--bottom" aria-label="ADA Campsites">
+      <i class="icon icon-symbols-ada-campsites"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Bike Trails">
+      <i class="icon icon-symbols-bike-trails"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Bird Watching">
+      <i class="icon icon-symbols-bird-watching"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Campsites">
+      <i class="icon icon-symbols-campsites"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Drinking Water">
+      <i class="icon icon-symbols-drinking-water"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Equestrian">
+      <i class="icon icon-symbols-equestrian"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Fishing">
+      <i class="icon icon-symbols-fishing"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Hiking">
+      <i class="icon icon-symbols-hiking"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Historic Site">
+      <i class="icon icon-symbols-historic-site"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Pets Okay">
+      <i class="icon icon-symbols-pets-okay"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Picnic Sites">
+      <i class="icon icon-symbols-picnic-sites"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Restrooms">
+      <i class="icon icon-symbols-restrooms"></i>
+    </span>
+  </li>
+
+and Berlin-Ichthyosaur:
+  <li>
+    <span class="hint--bottom" aria-label="ADA Campsites">
+      <i class="icon icon-symbols-ada-campsites"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Bike Trails">
+      <i class="icon icon-symbols-bike-trails"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Bird Watching">
+      <i class="icon icon-symbols-bird-watching"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Campsites">
+      <i class="icon icon-symbols-campsites"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Drinking Water">
+      <i class="icon icon-symbols-drinking-water"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Equestrian">
+      <i class="icon icon-symbols-equestrian"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Hiking">
+      <i class="icon icon-symbols-hiking"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Historic Site">
+      <i class="icon icon-symbols-historic-site"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Pets Okay">
+      <i class="icon icon-symbols-pets-okay"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Picnic Sites">
+      <i class="icon icon-symbols-picnic-sites"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="Restrooms">
+      <i class="icon icon-symbols-restrooms"></i>
+    </span>
+  </li>
+  
+  <li>
+    <span class="hint--bottom" aria-label="RV Dump Station">
+      <i class="icon icon-symbols-rv-dump-station"></i>
+    </span>
+  </li>
