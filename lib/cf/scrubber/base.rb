@@ -24,6 +24,7 @@ module Cf
                               :activities,
                               :amenities,
                               :campsite_types,
+                              :closest_towns,
                               :fees,
                               :hours_of_operation,
                               :information_center,

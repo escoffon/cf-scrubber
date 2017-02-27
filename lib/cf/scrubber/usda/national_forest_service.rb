@@ -429,8 +429,8 @@ module Cf
 
         # @!visibility private
 
-        ADDITIONAL_INFO_KEYS = [ :amenities, :hours_of_operation, :information_center, :open_season,
-                                 :reservations, :restrictions, :restroom, :water ]
+        ADDITIONAL_INFO_KEYS = [ :amenities, :closest_towns, :hours_of_operation, :information_center,
+                                 :open_season, :reservations, :restrictions, :restroom, :water ]
 
         # Initializer.
         #
