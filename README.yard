@@ -9,6 +9,7 @@ The following web sites are currently supported:
   is part of the US Department of Agriculture.)
 - The California State Park System ({Cf::Scrubber::Ca::StateParks}).
 - The Nevada State Park System ({Cf::Scrubber::Nv::StateParks}).
+- The Oregon State Park System ({Cf::Scrubber::Or::StateParks}).
 
 In addition to the scrubber classses, the gem provides a number of scripts in the +bin+ directory:
 - +usda_nfs_states+ lists the states with national forests or grasslands.
@@ -19,6 +20,8 @@ In addition to the scrubber classses, the gem provides a number of scripts in th
   with camping facilities.
 - +nv_parks_activities+ lists the activity (facilities) codes from the NV state park system page.
 - +nv_parks_list+ lists parks in the NV state park system; you can list all parks, or only the ones
+  with camping facilities.
+- +or_parks_list+ lists parks in the OR state park system; you can list all parks, or only the ones
   with camping facilities.
 These scripts are mostly abstracted away into classes which provide a framework for similar behavior;
 see the base class {Cf::Scrubber::Script::Base} and its operation-specific subclasses.

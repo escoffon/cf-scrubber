@@ -2,8 +2,8 @@
 
 Gem::Specification.new do |s|
   s.name        = 'cf-scrubber'
-  s.version     = '0.3.14'
-  s.date        = '2017-02-27'
+  s.version     = '0.4.1'
+  s.date        = '2017-02-28'
   s.summary     = "Campfinder scrubbers"
   s.description = "A gem of scrubbers for various web sites that contain campground information."
   s.authors     = [ "Emil Scoffone" ]
@@ -16,9 +16,12 @@ Gem::Specification.new do |s|
                     'lib/cf/scrubber/ca/script/activities.rb', 'lib/cf/scrubber/ca/script/park_list.rb',
                     'lib/cf/scrubber/nv/state_parks.rb', 'lib/cf/scrubber/nv/script.rb',
                     'lib/cf/scrubber/nv/script/activities.rb', 'lib/cf/scrubber/nv/script/park_list.rb',
+                    'lib/cf/scrubber/or/state_parks.rb', 'lib/cf/scrubber/or/script.rb',
+                    'lib/cf/scrubber/or/script/park_list.rb',
                     'bin/usda_nfs_states', 'bin/usda_nfs_forests', 'usda_nfs_campgrounds',
                     'bin/ca_parks_activities', 'bin/ca/parks_list',
                     'bin/nv_parks_activities', 'bin/nv/parks_list',
+                    'bin/or/parks_list',
                     'Rakefile',
                     'test/test_usda_nfs.rb',
                     '.yardopts'

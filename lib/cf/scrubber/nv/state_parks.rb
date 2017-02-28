@@ -14,7 +14,7 @@ module Cf
       # This scrubber walks the Nevada State Park System web site to extract information about campgrounds.
 
       class StateParks < Cf::Scrubber::Base
-        # The name of the organization dataset (the CA State Park System, which is part of CA)
+        # The name of the organization dataset (the NV State Park System, which is part of NV)
 
         ORGANIZATION_NAME = 'nv:state'
 
@@ -226,13 +226,16 @@ module Cf
           adjust_href(an['href'], res.uri)
         end
 
-        def extract_features(nb)
+        def extract_features(nb, park_uri)
           nb.css("ul.parkCard-item-back-amenities > li > span > .icon").map do |n|
             f = ''
             n['class'].split.each do |c|
               if c =~ /^icon-symbols-(.+)/
                 m = Regexp.last_match
                 f = m[1].downcase
+                unless ACTIVITY_CODES.has_key?(f)
+                  self.logger.warn { "unknown activity code (#{f}) for park at (#{park_uri})" }
+                end
                 break
               end
             end
@@ -282,7 +285,7 @@ module Cf
 
           park_uri = extract_park_uri(nf, res)
 
-          fl = extract_features(nb)
+          fl = extract_features(nb, park_uri)
           add = {}
           ACTIVITY_MAP.each do |ak, al|
             a = list_activities(fl, al)

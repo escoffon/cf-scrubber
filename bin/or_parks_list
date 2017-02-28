@@ -1,0 +1,50 @@
+#! /usr/bin/eor ruby
+
+require 'cf/scrubber/or/script'
+
+class PrintParkList < Cf::Scrubber::Or::Script::ParkList
+  class Parser < Cf::Scrubber::Or::Script::ParkList::Parser
+    DATA_FORMATS = [ :raw, :json, :name ]
+
+    def initialize()
+      rv = super()
+
+      self.options.merge!({ data_format: :raw })
+
+      p = self.parser
+
+      p.banner = "Usage: or_parks_list [options]\n\nList OR state parks"
+
+      p.on_head("-DDATAFORMAT", "--data-format=DATAFORMAT", "The output format to use: raw, json, or name.") do |f|
+        f = f.to_sym
+        self.options[:data_format] = f if DATA_FORMATS.include?(f)
+      end
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintParkList::Parser.new)
+  end
+
+  def exec()
+    self.process do |sp, pd|
+      case self.parser.options[:data_format]
+      when :raw
+        print("#{pd}\n");
+      when :json
+        print("#{JSON.generate(pd)}\n")
+      when :name
+        print("#{pd[:name]} -- #{pd[:uri]}\n")
+      else
+        print("#{pd}\n")
+      end
+
+    end
+  end
+end
+
+script = PrintParkList.new()
+script.parser.parse(ARGV)
+script.exec

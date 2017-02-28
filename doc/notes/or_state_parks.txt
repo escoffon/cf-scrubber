@@ -1,0 +1,40 @@
+The state park coordinates can be obtain via a call to
+http://oregonstateparks.org/cfcs/shared/format.cfc?method=json&cfc=parks.parksData&function=findParksByDistance
+The response contains JSON that lists park names and locations. It also lists park ID and two properties that
+indicate whether or not the park allows camping and chanrges day use fees: overNight and duFees.
+
+There are possibly other request parameters to get different slices of the park data.
+
+The park detail page is at
+    http://oregonstateparks.org/index.cfm?do=parkPage.dsp_parkPage&parkId=<park_id>
+where <park_id> is the park identifier
+
+The index page has a find by feature/facility feature that seems to work a bit like the NV one.
+Except it doesn't; this guy makes calls into the format.cfc API, passing the list of requested features
+in the featureIds parameter.
+
+To get the list of facilities for each park, we'll probably have to scrub the park's detail page.
+There is a set of icons that summarizes the facilities. There's a div#park-carousel that displays park
+images. The next element is a div.hidden-print that contains a <p> with a set of icons, like this:
+
+<div id="park-carousel" class="park-carousel carousel slide">..</div>
+<div class="hidden-print">
+  <div class="text-muted">
+    Symbols represent major park features and activities.&nbsp;
+    Blue icons mean some or all are <abbr title="Americans with Disabilities Act">ADA</abbr> accessible.
+  </div>
+  <p class="clearfix">
+    <a onclick="" class="park-guide-icon park-guide-icon-camping" title="Camping"></a>
+    <a onclick="" class="park-guide-icon park-guide-icon-reservable" title="Reservable"></a>
+    <a onclick="" class="park-guide-icon park-guide-icon-hiking" title="Hiking Trails"></a>
+    <a onclick="" class="park-guide-icon park-guide-icon-dump" title="Dump Station"></a>
+
+and so on. We can use thses to build the feature set for each park. There are ADA versions of icons:
+
+  <a onclick="" class="park-guide-icon park-guide-icon-camping-ada" title="Camping (ADA)"></a>
+  <a onclick="" class="park-guide-icon park-guide-icon-reservable" title="Reservable"></a>
+  <a onclick="" class="park-guide-icon park-guide-icon-hiking-ada" title="Hiking Trails (ADA)"></a>
+  <a onclick="" class="park-guide-icon park-guide-icon-dump" title="Dump Station"></a>
+
+Also if the park is reservable, the page also contains the reservation link.
+

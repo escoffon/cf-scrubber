@@ -162,6 +162,7 @@ module Cf
         #  See {Cf::Scrubber::Base#initializer}.
 
         def initialize(root_url = nil, opts = {})
+          @use_abbreviation = false
           root_url = ROOT_URL unless root_url.is_a?(String)
           super(root_url, opts)
         end
@@ -296,7 +297,7 @@ module Cf
         #  if any activity in _actlist_ has a nonzero value in the park data, the park is added to the
         #  return set.
         #
-        # @return [Array<Hash>, nil] Returns a string containing the park list.
+        # @return [Array<Hash>, nil] Returns an array containing the park list.
         #  Returns +nil+ if it can't find it in the page.
 
         def select_park_list(actlist)
@@ -334,9 +335,13 @@ module Cf
           blurb = (with_details) ? get_park_blurb(pd) : ''
 
           ptype = pd['type_desc']
-          abbr = PARK_TYPES[ptype]
-          unless abbr
-            self.logger.warn { "convert_park_data: no abbreviation for park type (#{ptype}) for park (#{pd['name']}" }
+          if @use_abbreviation
+            abbr = PARK_TYPES[ptype]
+            unless abbr
+              self.logger.warn { "convert_park_data: no abbreviation for park type (#{ptype}) for park (#{pd['name']}" }
+            end
+          else
+            abbr = ptype
           end
 
           add = {}
