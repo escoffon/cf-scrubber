@@ -331,9 +331,6 @@ module Cf
         # @return [Hash] Returns a hash that contains normalized, converted park data.
 
         def convert_park_data(pd, with_details = true)
-          uri = park_uri(pd)
-          blurb = (with_details) ? get_park_blurb(pd) : ''
-
           ptype = pd['type_desc']
           if @use_abbreviation
             abbr = PARK_TYPES[ptype]
@@ -363,6 +360,23 @@ module Cf
             additional_info: add
           }
 
+          if with_details
+            uri = park_uri(pd)
+            res = get(uri, {
+                      headers: {
+                        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                      }
+                    })
+            if res.is_a?(Net::HTTPOK)
+              doc = Nokogiri::HTML(res.body)
+
+              cpd[:blurb] = extract_park_blurb(doc, res, pd)
+              
+              reservation_uri = extract_park_reservation_uri(doc, res, pd)
+              cpd[:reservation_uri] = reservation_uri unless reservation_uri.nil?
+            end
+          end
+
           self.logger.info { "extracted park data for (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
           cpd
         end
@@ -386,16 +400,18 @@ module Cf
           l
         end
 
-        def get_park_blurb(pd)
-          res = get(park_uri(pd), {
-                      headers: {
-                        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-                      }
-                    })
-          if res.is_a?(Net::HTTPOK)
-            doc = Nokogiri::HTML(res.body)
-            
+        def extract_park_blurb(doc, res, pd)
+          ''
+        end
+
+        def extract_park_reservation_uri(doc, res, pd)
+          res_a = doc.css('#ParkinfoTab3 > div > div > a.btn')
+          if res_a.length > 0
+            na = res_a[0]
+            return na['href']
           end
+
+          nil
         end
       end
     end

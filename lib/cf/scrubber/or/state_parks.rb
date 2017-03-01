@@ -243,6 +243,7 @@ module Cf
 
         def build_park_data(ple, with_details = true)
           add = { }
+          reservation_uri = nil
 
           if with_details
             res = get_park_details_page(ple['park_id'])
@@ -250,11 +251,12 @@ module Cf
               doc = Nokogiri::HTML(res.body)
 
               pfl = extract_park_features(doc, res.uri)
-
               ACTIVITY_MAP.each do |ak, al|
                 a = list_activities(pfl, al)
                 add[ak] = a.join(', ') if a.count > 0
               end
+
+              reservation_uri = extract_park_reservation_uri(doc, res, ple)
             end
           end
 
@@ -270,6 +272,8 @@ module Cf
             },
             additional_info: add
           }
+
+          cpd[:reservation_uri] = reservation_uri unless reservation_uri.nil?
 
           self.logger.info { "extracted park data for (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
           cpd
@@ -355,6 +359,16 @@ module Cf
           end
 
           [ ]
+        end
+
+        def extract_park_reservation_uri(doc, res, pd)
+          res_a = doc.css('div.sidebar-wrapper a.sidebar-button-reserve')
+          if res_a.length > 0
+            na = res_a[0]
+            return na['href']
+          end
+
+          nil
         end
 
         # These methods are used to build the features list
