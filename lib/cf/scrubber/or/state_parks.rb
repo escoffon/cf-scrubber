@@ -36,7 +36,7 @@ module Cf
 
         # the default query string for the JSON list of parks.
 
-        PARK_LIST_DEFAULT_QUERY = 'method=json&cfc=parks.parksData&function=findParksByDistance'
+        PARK_LIST_DATA_QUERY = 'method=json&cfc=parks.parksData&function=findParksByDistance'
 
         # All activity codes and their names.
 
@@ -100,6 +100,15 @@ module Cf
           'yurt-ada' => 'Yurt (ADA)'
         }
 
+        # Map of feature codes to campground types.
+
+        CAMPGROUND_TYPES_MAP = {
+          standard: [ 74, 75 ],		# 74: Tent Campsites, 75: Hiker Biker Campsites
+          group: [ ],
+          rv: [ 73 ],			# 73: RV Campsites
+          cabin: [ 76, 92 ]		# 76: Yurts - Cabins, 92: Yurts - Cabins, Pets OK
+        }
+
         # Activity codes that indicate camping available.
 
         CAMPING_ACTIVITY_CODES = [ 'cabin', 'cabin-ada', 'camping', 'camping-ada',
@@ -158,6 +167,10 @@ module Cf
         # Extract the JSON fragment that contains the park list.
         # This method calls the query API to get the full list of parks.
         #
+        # @param [Hash] rp A hash of request parameters. If this parameter is a hash with at least one
+        #  key, the request is made using a +POST+ method, and these parameters are sent to the server;
+        #  otherwise, +GET+ is used, and no parameters are sent down the pipe.
+        #
         # @return [String, nil] Returns a string containing the park list, in JSON.
         #  Returns +nil+ if the call fails.
         #  Note that the value returned is the JSON string returned by the API call (minus the comment
@@ -168,14 +181,22 @@ module Cf
         #  - +PARKS+ is an array that contains the park list.
         #  - +MILERANGE+ is some control, maybe it's the radius for a distance search.
 
-        def get_park_list_json()
+        def get_park_list_json(rp = nil)
           json = nil
 
-          res = get(self.root_url + PARK_LIST_PATH + '?' + PARK_LIST_DEFAULT_QUERY, {
-                      headers: {
-                        'Accept' => 'application/json, text/javascript, */*; q=0.01'
-                      }
-                    })
+          res = if rp.is_a?(Hash) && (rp.count > 0)
+                  post(self.root_url + PARK_LIST_PATH + '?' + PARK_LIST_DATA_QUERY, rp, {
+                        headers: {
+                          'Accept' => 'application/json, text/javascript, */*; q=0.01'
+                        }
+                      })
+                else
+                  get(self.root_url + PARK_LIST_PATH + '?' + PARK_LIST_DATA_QUERY, {
+                        headers: {
+                          'Accept' => 'application/json, text/javascript, */*; q=0.01'
+                        }
+                      })
+                end
           if res.is_a?(Net::HTTPOK)
             # the response is not technically legal JSON, since it starts with //: get rid of that
 
@@ -191,12 +212,13 @@ module Cf
         #
         # @param [Boolean] overnites_only If this parameter is set to +true+, only parks with overnight
         #  (campground) facilities are returned. If +false+, all parks are returned.
+        # @param [Hash] rp A hash of request parameters that is passed to {#get_park_list_json}.
         #
         # @return [Array<Hash>, nil] Returns an array containing the park list.
         #  Returns +nil+ if it can't find it in the page.
 
-        def get_park_list_raw(overnites_only = true)
-          json = get_park_list_json()
+        def get_park_list_raw(overnites_only = true, rp = nil)
+          json = get_park_list_json(rp)
           unless json.nil?
             parsed = JSON.parse(json)
             if overnites_only
@@ -239,7 +261,7 @@ module Cf
         # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
         #  (for example, for the facilities list).
         #
-        # @return [Hash] Returns a has containing standardized information for the park.
+        # @return [Hash] Returns a hash containing standardized information for the park.
 
         def build_park_data(ple, with_details = true)
           add = { }
@@ -297,6 +319,72 @@ module Cf
           rv = get_park_list_raw(overnites_only).map do |ple|
             build_park_data(ple, with_details)
           end
+          if @_enable_global_features
+            _global_features().keys.sort.each { |fk| printf("%-24s : #{_global_feature(fk)}\n", fk) }
+          end
+          rv
+        end
+
+        # Extract the park list for parks that support overnights, and generate standardized info from it.
+        # This method calls {#get_park_list_raw} and builds a list of standardized park data from the
+        # contents of the raw park list and the details pages.
+        #
+        # @param types [Array<Symbol>] An array listing the campsite types to include in the list; campgrounds
+        #  that offer campsites from the list are added to the return set.
+        #  A +nil+ value indicates that all camping types are to be included.
+        #  See {Cf::Scrubber::Base::CAMPSITE_TYPES}.
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the facilities list).
+        #
+        # @return [Array<Hash>, nil] Returns an array containing the standardized park data.
+        #  Returns +nil+ if it can't find the park list.
+
+        def build_overnight_park_list(types = nil, with_details = true)
+          _init_global_features()
+
+          # OK so we need to get the park list for all features needed.
+
+          rp = {
+            featureIds: -1,
+            city: '',
+            mileRanges: '10,20,30'
+          }
+          parks = [ ]
+          park_types = { }
+          tt = (types.is_a?(Array)) ? types : Cf::Scrubber::Base::CAMPSITE_TYPES
+          tt.each do |t|
+            st = t.to_sym
+            if CAMPGROUND_TYPES_MAP.has_key?(st)
+              CAMPGROUND_TYPES_MAP[st].each do |fid|
+                rp[:featureIds] = fid
+                get_park_list_raw(true, rp).each do |c|
+                  cid = c['park_id']
+                  pt = park_types[cid]
+                  if pt
+                    # Since the park was already picked up, all we need to do here is add the type
+
+                    pt << st unless pt.include?(st)
+                  else
+                    # Not yet seen: push it on the park list and save its type
+
+                    parks << c
+                    park_types[cid] = [ st ]
+                  end
+                end
+              end
+            end
+          end
+
+          # OK at this point 'parks' has the list of park data, and 'park_types' their types, so we can
+          # generate the park data
+
+          rv = parks.map do |ple|
+            cid = ple['park_id']
+            pd = build_park_data(ple, with_details)
+            pd[:types] = park_types[cid]
+            pd
+          end
+
           if @_enable_global_features
             _global_features().keys.sort.each { |fk| printf("%-24s : #{_global_feature(fk)}\n", fk) }
           end

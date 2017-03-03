@@ -2,8 +2,8 @@
 
 Gem::Specification.new do |s|
   s.name        = 'cf-scrubber'
-  s.version     = '0.4.6'
-  s.date        = '2017-02-28'
+  s.version     = '0.5.0'
+  s.date        = '2017-03-01'
   s.summary     = "Campfinder scrubbers"
   s.description = "A gem of scrubbers for various web sites that contain campground information."
   s.authors     = [ "Emil Scoffone" ]
@@ -23,7 +23,8 @@ Gem::Specification.new do |s|
                     'bin/nv_parks_activities', 'bin/nv/parks_list',
                     'bin/or/parks_list',
                     'Rakefile',
-                    'test/test_usda_nfs.rb',
+                    'test/test_base.rb', 'test/test_usda_nfs.rb', 'test/test_ca_state_parks.rb',
+                    'test/test_nv_state_parks.rb', 'test/test_or_state_parks.rb',
                     '.yardopts'
                   ]
   s.homepage    = 'http://rubygems.org/gems/cf-scrubber'

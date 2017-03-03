@@ -123,7 +123,7 @@ module Cf
       # scrubber extracts that information from the CSS properties of each element.
       #
       # The scrubbed contents contain the following data structures:
-      # - An array of string containing the URIs to the scrubbed +li+ elements.
+      # - An array of strings containing the URIs to the scrubbed +li+ elements.
       # - A hash whose keys are URIs, and whose values are hashes containing each +li+ element's scrubbed
       #   information (*:name* and *:uri*).
       # - The root node of the hierarchy, which is the entry point of the campground tree.
@@ -167,7 +167,8 @@ module Cf
         #
         # @param name [Hash] The page name.
         # @param campgrounds [Hash] An optional hash of campgrounds that have already been loaded; used
-        #  to avoid picking up campground data multiple times.
+        #  to avoid picking up campground data multiple times. The keys are campground URLs, and the
+        #  values are hashes containing the campground name and URI.
 
         def initialize(name, campgrounds = {})
           @name = name
@@ -208,14 +209,14 @@ module Cf
 
               unless a.nil?
                 camp_name = a.text()
-                camp_url = adjust_href(a['href'], res.uri)
+                camp_url = Cf::Scrubber::Base.adjust_href(a['href'], res.uri, [ 'actid' ])
                 camp_level = margin_level(n)
 
                 if campgrounds.has_key?(camp_url)
-                  c = campgrounds[camp_url]
+                  c = @campgrounds[camp_url]
                 else
                   c = { name: camp_name, url: camp_url }
-                  campgrounds[camp_url] = c
+                  @campgrounds[camp_url] = c
                 end
 
                 @camp_list << c
@@ -271,23 +272,6 @@ module Cf
           hs = parse_style(node['style'])
           ((hs[:margin].split(' '))[3]).to_i
         end
-
-        def adjust_href(href, base_uri)
-          n_uri = URI(href)
-
-          qa = n_uri.query.split('&').select { |e| e !~ /^actid=/ }
-          q = qa.join('&')
-
-          if href[0] == '/'
-            uri = base_uri.dup
-            uri.path = n_uri.path
-          else
-            uri = URI(href)
-          end
-
-          uri.query = q
-          uri.to_s
-        end
       end
 
       # Scrubber for national forest campgrounds.
@@ -322,6 +306,14 @@ module Cf
         # The name of the forest camping subpage listing campgrounds that can hold RVs.
 
         CAMPGROUND_RV_CAMPING_SUBPAGE = 'RV Camping'
+
+        # @!visibility private
+        CAMPGROUND_TYPES = {
+          :standard => CAMPGROUND_CAMPING_SUBPAGE,
+          :group => CAMPGROUND_GROUP_CAMPING_SUBPAGE,
+          :cabin => CAMPGROUND_CABINS_SUBPAGE,
+          :rv => CAMPGROUND_RV_CAMPING_SUBPAGE
+        }
 
         # @!visibility private
         # State codes and state names.
@@ -430,7 +422,8 @@ module Cf
         # @!visibility private
 
         ADDITIONAL_INFO_KEYS = [ :amenities, :closest_towns, :hours_of_operation, :information_center,
-                                 :open_season, :reservations, :restrictions, :restroom, :water ]
+                                 :open_season, :rentals_and_guides, :reservations, :restrictions, :restroom,
+                                 :water ]
 
         # Initializer.
         #
@@ -615,8 +608,8 @@ module Cf
         # Secondary pages are accessible from the +Home+ list in the main page, which contains links to the
         # secondary pages.
         #
-        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state name,
-        #  and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
+        #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
         # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from {#forests_for_state}.
         # @param page_name [String] The name of the secondary page to load; this is the label of the list item
@@ -709,7 +702,7 @@ module Cf
           if c_res.is_a?(Net::HTTPOK)
             s_href = nil
             doc = Nokogiri::HTML(c_res.body)
-            elem, href = get_forest_center_menu_node(c_res, doc, subpage_name)
+            elem, href = get_forest_center_menu_node(c_res, doc, subpage_name, [ ])
             s_res = get(href)
           end
 
@@ -724,66 +717,52 @@ module Cf
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
         # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param types [Array<Symbol,String>] An array listing the campsite types to include in the list;
+        #  campgrounds that offer campsites from the list are added to the return set.
+        #  A +nil+ value indicates that all camping types are to be included.
         # @param with_details [Boolean] If +true+, also load the data from the campground details page.
         #
         # @return [Array<Hash>] Returns an array of hashes containing the list of campgrounds.
-        #  The hashes contain the following key/value pairs:
-        #  - *:area* If this key is present (and +true+, which it typically is if present), the campground
-        #    element is actually a grouping element in the list, and its detail page points to an area detail
-        #    page, rather than a real campground.
-        #  - *:name* A string containing the campground name.
-        #  - *:url* A string containing the URL to the campground page.
+        #  The hashes contain the following standard key/value pairs:
+        #  - *:organization* Is +usda:nfs+.
+        #  - *:name* The campground name.
+        #  - *:uri* The URL to the campground's details page.
+        #  - *:region* The state for the campground's national forest.
+        #  - *:area* The national forest name.
+        #  - *:location* The geographic coordinates of the campground: *:lat*, *:lon*, and *:elevation*.
+        #    Only present if <i>with_details</i> is +true+.
+        #  - *:types* An array listing the types of campsites in the campground; often this will be a one
+        #    element array, but some campgrounds have multiple site types.
+        #  - *:reservation_uri* The URL to the reservation page for the campground.
+        #  - *:blurb* A short description of the campground.
+        #  - *:additional_info* A hash containing essentially a subsection of the "At a Glance" scrubbed
+        #    components. Only present if <i>with_details</i> is +true+.
+        #  They also contain scrubber-specific keys:
         #  - *:state* The name of the state in which the campground is located.
         #  - *:state_id* The identifier of the state in which the campground is located.
         #  - *:forest* The name of the forest (or grassland) in which the campground is located.
         #  - *:forest_id* The identifier of the forest (or grassland) in which the campground is located.
-        #  - *:location* If <i>with_details</i> is +true+, this key is present and its value is a hash
-        #    containing location information (+:lat+, +:lon+, +:elevation+) if available.
-        #  - *:additional_info* If <i>with_details</i> is +true+, this key is present and its value is a hash
-        #    containing additional information if available.
+        #  - *:at_a_glance* A hash containing all the key/value pairs extracted from the "At a Glance"
+        #    part of the details page.
 
-        def get_forest_campgrounds(state_id, forest_id, with_details = false)
+        def get_forest_campgrounds(state_id, forest_id, types = nil, with_details = false)
+          tt = ((types.is_a?(Array)) ? types : Cf::Scrubber::Base::CAMPSITE_TYPES).map { |e| e.to_sym }
+
           state_id = normalize_state_id(state_id)
           state_name = normalize_state_name(state_id)
           forest_id = normalize_forest_id(state_id, forest_id)
           forest_name = normalize_forest_name(state_id, forest_id)
 
-          campgrounds = []
-          res = get_forest_camping_subpage(state_id, forest_id, CAMPGROUND_CAMPING_SUBPAGE)
-          if res.is_a?(Net::HTTPOK)
-            self.logger.info { "get_forest_campgrounds(#{state_name}, #{forest_name})" }
+          @campgrounds_map = { }
+          @campgrounds = [ ]
 
-            boilerplate = {
-              organization: ORGANIZATION_NAME,
-              state: state_name,
-              state_id: state_id,
-              forest: forest_name,
-              forest_id: forest_id
-            }
+          tt.each { |t| scan_campground_pages(t, state_name, state_id, forest_name, forest_id, with_details) }
 
-            pg = CampingPage.new(CAMPGROUND_CAMPING_SUBPAGE)
-            pg.scrub(res)
-            pg.root.depth_first do |n|
-              # OK so we only emit leaf nodes.
-              # That's the heuristic here: we assume that the USFS web pages list campgrounds in the
-              # leaf nodes
+          # At this point, we have scanned all the pages for all the required types.
+          # @campgrounds contains the list of campground URIs, and @campgrounds_map the map from URIs
+          # to campground data
 
-              if n.uri && (n.children.count == 0)
-                c = pg.campgrounds[n.uri]
-                c.merge!(boilerplate)
-
-                if with_details
-                  c.merge!(get_campground_details(c))
-                end
-
-                campgrounds << c
-              end
-            end
-          else
-            self.logger.warn { "get_forest_campgrounds(#{state_name}, #{forest_name}) gets #{res}" }
-          end
-
-          campgrounds
+          @campgrounds.map { |uri| @campgrounds_map[uri] }
         end
 
         # Get the list of campgrounds for a given state identifier.
@@ -792,15 +771,18 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
+        # @param types [Array<Symbol,String>] An array listing the campsite types to include in the list;
+        #  campgrounds that offer campsites from the list are added to the return set.
+        #  A +nil+ value indicates that all camping types are to be included.
         # @param with_details [Boolean] If +true+, also load the data from the campground details page.
         #
         # @return [Array<Hash>] Returns an array of hashes containing the list of campgrounds.
         #  See {#get_forest_campgrounds} for a description of the hash contents.
 
-        def get_state_campgrounds(state_id, with_details = false)
+        def get_state_campgrounds(state_id, types = nil, with_details = false)
           camps = []
           forests_for_state(state_id).each do |forest_id|
-            camps.concat(get_forest_campgrounds(state_id, forest_id, with_details))
+            camps.concat(get_forest_campgrounds(state_id, forest_id, types, with_details))
           end
 
           camps
@@ -1029,43 +1011,76 @@ module Cf
           nil
         end
 
-        def adjust_href(href, base_uri)
-          if href[0] == '/'
-            n_uri = URI(href)
-            uri = base_uri.dup
-            uri.path = n_uri.path
-            uri.query = n_uri.query
-          else
-            uri = URI(href)
-          end
-
-          uri.to_s
-        end
-
-        def get_forest_left_menu_node(res, doc, node_label)
+        def get_forest_left_menu_node(res, doc, node_label, qf = [ ])
           root_element = doc.css("div#leftcol > table > tr")[2]
           home_element = root_element.css("div.navleft ul")
           home_element.css('li > a > span').each do |n|
             t = n.text()
             if t == node_label
-              return [ n.parent.parent, adjust_href(n.parent['href'], res.uri) ]
+              return [ n.parent.parent, adjust_href(n.parent['href'], res.uri, qf) ]
             end
           end
 
           [ nil, nil ]
         end
 
-        def get_forest_center_menu_node(res, doc, node_label)
+        def get_forest_center_menu_node(res, doc, node_label, qf = [ ])
           root_element = doc.css("div#centercol > table > tr")[1]
           home_element = root_element.css("ul")
           home_element.css('li > a > strong').each do |n|
             t = n.text()
             if t == node_label
-              return [ n.parent.parent, adjust_href(n.parent['href'], res.uri) ]
+              return [ n.parent.parent, adjust_href(n.parent['href'], res.uri, qf) ]
             end
           end
 
           [ nil, nil ]
+        end
+
+        def scan_campground_pages(type, state_name, state_id, forest_name, forest_id, with_details)
+          page_name = CAMPGROUND_TYPES[type]
+          res = get_forest_camping_subpage(state_id, forest_id, page_name)
+          if res.is_a?(Net::HTTPOK)
+            self.logger.info { "scan_campground_pages(#{page_name}, #{state_name}, #{forest_name})" }
+
+            boilerplate = {
+              organization: ORGANIZATION_NAME,
+              state: state_name,
+              state_id: state_id,
+              forest: forest_name,
+              forest_id: forest_id
+            }
+
+            pg = CampingPage.new(page_name)
+            pg.scrub(res)
+            pg.root.depth_first do |n|
+              # OK so we only emit leaf nodes.
+              # That's the heuristic here: we assume that the USFS web pages list campgrounds in the
+              # leaf nodes
+
+              if n.uri && (n.children.count == 0)
+                if @campgrounds_map.has_key?(n.uri)
+                  # So this campground has already been loaded (from a different page type), so we
+                  # don't need to duplicate the work. All we have to do is update the :types
+
+                  c = @campgrounds_map[n.uri]
+                  c[:types] << type
+                else
+                  # not there yet: pick up the data
+
+                  c = pg.campgrounds[n.uri]
+                  c.merge!(boilerplate)
+                  c.merge!(get_campground_details(c)) if with_details
+                  c[:types] = [ type ]
+
+                  @campgrounds << n.uri
+                  @campgrounds_map[n.uri] = c
+                end
+              end
+            end
+          else
+            self.logger.warn { "get_forest_campgrounds(#{state_name}, #{forest_name}) gets #{res}" }
+          end
         end
 
         def extract_location_details(box, campground)

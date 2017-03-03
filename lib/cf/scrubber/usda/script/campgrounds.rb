@@ -14,6 +14,7 @@ module Cf
           # The base class defines the following options:
           # - *-sSTATES* (*--states=STATES*) to set the list of states for which to list campgrounds.
           # - *-sFORESTS* (*--forests=FORESTS*) to set the list of forests for which to list campgrounds.
+          # - *-tTYPES* (*--types=TYPES*) to set the campground types to return.
           # - *-d* (*--with-details*) to have the script load campground details.
           # - *-vLEVEL* (*--level=LEVEL*) to set the logger's output level.
           # - *-h* (*--help*) to emit a help statement.
@@ -50,6 +51,12 @@ module Cf
                   end
                 end
 
+                opts.on("-tTYPES", "--types=TYPES", "Comma-separated list of types of campground to list. Lists all types if not given.") do |tl|
+                  self.options[:types] = tl.split(',').map do |s|
+                    s.strip.to_sym
+                  end
+                end
+
                 opts.on("-d", "--with-details", "If present, emit the additional info and location info.") do
                   self.options[:show_details] = true
                 end
@@ -60,7 +67,9 @@ module Cf
                 end
               end
 
-              super(opt_parser, { level: Logger::WARN, states: nil, forests: nil, show_details: false } )
+              super(opt_parser, {
+                      level: Logger::WARN, states: nil, forests: nil, types: nil, show_details: false
+                    })
             end
           end
 
@@ -90,7 +99,8 @@ module Cf
             self.parser.options[:states].each do |s|
               fl = (self.parser.options[:forests].nil?) ? nfs.forests_for_state(s).keys : self.parser.options[:forests]
               fl.sort.each do |f|
-                nfs.get_forest_campgrounds(s, f, self.parser.options[:show_details]).each do |c|
+                nfs.get_forest_campgrounds(s, f, self.parser.options[:types],
+                                           self.parser.options[:show_details]).each do |c|
                   blk.call(nfs, s, f, c)
                 end
               end

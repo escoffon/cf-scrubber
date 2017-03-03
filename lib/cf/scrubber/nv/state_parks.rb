@@ -57,7 +57,7 @@ module Cf
 
         # Activity codes that indicate camping available.
 
-        CAMPING_ACTIVITY_CODES = [ 'ada-campsites', 'cabins-yurts', 'campsites' ]
+        CAMPING_ACTIVITY_CODES = [ 'ada-campsites', 'cabins-yurts', 'campsites', 'rv-hookups' ]
 
         # Activity codes for listing activities.
 
@@ -90,6 +90,15 @@ module Cf
           :learning => LEARNING_ACTIVITY_CODES,
           :restroom => RESTROOM_ACTIVITY_CODES,
           :water => WATER_ACTIVITY_CODES
+        }
+
+        # Map of activity codes to campground types.
+
+        CAMPGROUND_TYPES_MAP = {
+          standard: [ 'ada-campsites', 'campsites' ],
+          group: [  ],
+          rv: [ 'rv-hookups' ],
+          cabin: [ 'cabins-yurts' ]
         }
 
         # Initializer.
@@ -154,9 +163,28 @@ module Cf
         end
 
         # Build the park list from the contents of the park cards in the index page.
+        # Note that this method loads just the local data, and clients will have to call
+        # {#extract_details_park_data} in order to have a fully populated set.
+        # The reason we split this is to avoid fetching detail pages for parks that may be dropped by
+        # a filter later.
         #
-        # @return [Array<Hash>, nil] Returns an array of hashes containing the park data.
+        # @return [Array<Hash>, nil] Returns an array of hashes containing the local park data
+        #  (data that can be extracted from the park index page).
         #  Returns +nil+ if it can't find it in the page.
+        #  The local park data contain the following standard key/value pairs:
+        #  - *:organization* Is +nv:parks+.
+        #  - *:name* The campground name.
+        #  - *:uri* The URL to the campground's details page.
+        #  - *:region* The string +Nevada+.
+        #  - *:area* An empty string.
+        #  - *:types* An array listing the types of campsites in the campground; often this will be a one
+        #    element array, but some campgrounds have multiple site types.
+        #  - *:blurb* A short description of the campground.
+        #  - *:additional_info* A hash containing information about the campground, as extracted from the
+        #    raw data.
+        #  It also contains scrubber-specific keys:
+        #  - *:features* An array containing the identifiers (from {ACTIVITY_CODES}) of the features
+        #    available at this park.
 
         def get_park_list()
           res = get(self.root_url + INDEX_PATH, {
@@ -167,20 +195,114 @@ module Cf
           if res.is_a?(Net::HTTPOK)
             doc = Nokogiri::HTML(res.body)
             doc.css("div.parkCard-wrapper > div.parkCard-item").map do |nc|
-              extract_park_data(nc, res)
+              extract_local_park_data(nc, res)
             end
           else
             [ ]
           end
         end
 
-        # Narrow the park list to those that have camping facilities.
+        # Get the list of parks that provide any of the given facilities.
+        # This method calls {#get_park_list} to get the park data, then selects the ones
+        # that provide at least one of the given facilities.
         #
-        # @return [Array<Hash>, nil] Returns an array of hashes containing the park data.
+        # @param actlist [Array<String>] An array containing the activities to use for the filtering:
+        #  if any activity in _actlist_ has a nonzero value in the park data, the park is added to the
+        #  return set. If _actlist_ is +nil+, all parks are returned (no filtering is done).
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the blurb).
+        #  This parameter is currently ignored.
+        #
+        # @return [Array<Hash>, nil] Returns an array containing the park list. The array elements are
+        #  hashes containing the standardized park data; see {#get_park_list} and {#extract_details_park_data}.
         #  Returns +nil+ if it can't find it in the page.
 
-        def select_campground_list()
-          get_park_list.select { |pd| pd[:additional_info].has_key?(:campsite_types) }
+        def any_park_list(actlist = nil, with_details = false)
+          if actlist.is_a?(Array)
+            return [ ] if actlist.count < 1
+            get_park_list().select do |pd|
+              if any_activity?(pd[:features], actlist)
+                extract_details_park_data(pd)
+                true
+              else
+                false
+              end
+            end
+          else
+            get_park_list().map { |pd| extract_details_park_data(pd) }
+          end            
+        end
+
+        # Get the list of parks that provide all of the given facilities.
+        # This method calls {#get_park_list} to get the park data, then selects the ones
+        # that provide all of the given facilities.
+        #
+        # @param actlist [Array<String>] An array containing the activities to use for the filtering:
+        #  if all activities in _actlist_ have a nonzero value in the park data, the park is added to the
+        #  return set. If _actlist_ is +nil+, all parks are returned (no filtering is done).
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the blurb).
+        #  This parameter is currently ignored.
+        #
+        # @return [Array<Hash>, nil] Returns an array containing the park list. The array elements are
+        #  hashes containing the standardized park data; see {#get_park_list} and {#extract_details_park_data}.
+        #  Returns +nil+ if it can't find it in the page.
+
+        def all_park_list(actlist = nil, with_details = false)
+          if actlist.is_a?(Array)
+            return [ ] if actlist.count < 1
+            get_park_list().select do |pd|
+              if all_activity?(pd[:features], actlist)
+                extract_details_park_data(pd)
+                true
+              else
+                false
+              end
+            end
+          else
+            get_park_list().map { |pd| extract_details_park_data(pd) }
+          end            
+        end
+
+        # Get the list of parks that provide camping facilities.
+        # This method builds an activity list based on the requested campground types, and then calls
+        # {#any_park_list} with it.
+        #
+        # @param types [Array<Symbol>] An array listing the campsite types to include in the list; campgrounds
+        #  that offer campsites from the list are added to the return set.
+        #  A +nil+ value indicates that all camping types are to be included.
+        #  See {Cf::Scrubber::Base::CAMPSITE_TYPES}.
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the blurb).
+        #
+        # @return [Array<Hash>, nil] Returns a string containing the park list. The array elements are
+        #  hashes containing the standardized park data, as described in {#get_park_list}.
+        #  Returns +nil+ if it can't find it in the page.
+
+        def select_campground_list(types = nil, with_details = false)
+          actlist = [ ]
+          tt = (types.is_a?(Array)) ? types : Cf::Scrubber::Base::CAMPSITE_TYPES
+          tt.each { |t| actlist |= CAMPGROUND_TYPES_MAP[t] if CAMPGROUND_TYPES_MAP.has_key?(t) }
+
+          any_park_list(actlist, with_details)
+        end
+
+        # Extract the park data that are stored in the park's details page.
+        # The method extracts the following keys from the details page, and loads them in _lpd_:
+        #  - *:location* The geographic coordinates of the campground: *:lat*, *:lon*, and *:elevation*.
+        #
+        # @param [Hash] lpd A hash containing the local park data; see {#get_park_list}.
+        #
+        # @return [Hash] Returns the park data, which now contain the details properties.
+
+        def extract_details_park_data(lpd)
+          body = get_park_details_page(lpd[:uri])
+          unless body.nil?
+            extract_park_location(body, lpd)
+          end
+
+          self.logger.info { "extracted details park data for (#{lpd[:region]}) (#{lpd[:area]}) (#{lpd[:name]})" }
+          lpd
         end
 
         private
@@ -198,17 +320,18 @@ module Cf
           l
         end
 
-        def adjust_href(href, base_uri)
-          n_uri = URI(href)
+        def make_types(fl)
+          types = [ ]
+          CAMPGROUND_TYPES_MAP.each { |tk, tv| types << tk if any_activity?(fl, tv) }
+          types
+        end
 
-          if href[0] == '/'
-            uri = base_uri.dup
-            uri.path = n_uri.path
-          else
-            uri = URI(href)
-          end
+        def any_activity?(fl, alist)
+          alist.any? { |e| has_activity?(fl, e) }
+        end
 
-          uri.to_s
+        def all_activity?(fl, alist)
+          alist.all? { |e| has_activity?(fl, e) }
         end
 
         def extract_park_name(nf)
@@ -279,7 +402,7 @@ module Cf
           end
         end
 
-        def extract_park_data(nc, res)
+        def extract_local_park_data(nc, res)
           nf = nc.css("div.parkCard-item-front")[0]
           nb = nc.css("div.parkCard-item-back")[0]
 
@@ -294,18 +417,16 @@ module Cf
 
           cpd = {
             organization: ORGANIZATION_NAME,
-            name: extract_park_name(nf) + ' SP',
+            name: extract_park_name(nf),
             uri: park_uri,
+            types: make_types(fl),
             region: REGION_NAME,
             area: '',
-            additional_info: add
+            additional_info: add,
+            features: fl
           }
 
-          # unfortunately the location is in hidden in the park details page
-
-          extract_park_location(get_park_details_page(park_uri), cpd)
-
-          self.logger.info { "extracted park data for (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
+          self.logger.info { "extracted local park data for (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
           cpd
         end
       end

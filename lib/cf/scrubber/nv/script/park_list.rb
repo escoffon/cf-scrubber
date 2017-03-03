@@ -32,8 +32,14 @@ module Cf
 
             def initialize()
               opt_parser = OptionParser.new do |opts|
-                opts.on("-C", "--campgrounds", "If present, only campgrounds are listed.") do |l|
-                  self.options[:campgrounds] = true
+                opts.on("-A", "--all", "If present, all parks are listed; otherwise only those with campgrounds are listed.") do |l|
+                  self.options[:all] = true
+                end
+
+                opts.on("-tTYPES", "--types=TYPES", "Comma-separated list of types of campground to list. Lists all types if not given.") do |tl|
+                  self.options[:types] = tl.split(',').map do |s|
+                    s.strip.to_sym
+                  end
                 end
 
                 opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger clsss (WARN, INFO, etc...). Defaults to WARN.") do |l|
@@ -46,7 +52,7 @@ module Cf
                 end
               end
 
-              super(opt_parser, { campgrounds: false, level: Logger::WARN } )
+              super(opt_parser, { all: false, types: nil, level: Logger::WARN } )
             end
           end
 
@@ -68,7 +74,11 @@ module Cf
 
           def process(&blk)
             sp = Cf::Scrubber::Nv::StateParks.new(nil, :logger_level => self.parser.options[:level])
-            pl = (self.parser.options[:campgrounds]) ? sp.select_campground_list : sp.get_park_list
+            pl = if self.parser.options[:all]
+                   sp.any_park_list
+                 else
+                   sp.select_campground_list(self.parser.options[:types])
+                 end
             if pl.is_a?(Array)
               pl.each do |pd|
                 blk.call(sp, pd)

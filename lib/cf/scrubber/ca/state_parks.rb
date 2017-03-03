@@ -137,6 +137,15 @@ module Cf
           :water => WATER_ACTIVITY_CODES
         }
 
+        # Map of activity codes to campground types.
+
+        CAMPGROUND_TYPES_MAP = {
+          standard: [ '82', '83', '85', '86' ],
+          group: [ '84' ],
+          rv: [ '92', '121', '124' ],
+          cabin: [ '90', '123' ]
+        }
+
         # Abbreviations for park types.
 
         PARK_TYPES = {
@@ -296,29 +305,64 @@ module Cf
         # @param actlist [Array<String>] An array containing the activities to use for the filtering:
         #  if any activity in _actlist_ has a nonzero value in the park data, the park is added to the
         #  return set.
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the blurb).
         #
-        # @return [Array<Hash>, nil] Returns an array containing the park list.
+        # @return [Array<Hash>, nil] Returns a string containing the park list. The array elements are
+        #  hashes containing the standardized park data, as returned by {#convert_park_data}.
         #  Returns +nil+ if it can't find it in the page.
 
-        def select_park_list(actlist)
-          get_park_list_raw().select do |p|
-            count = actlist.inject(0) { |c, e| (p[e] != 0) ? c+1 : c }
-            count > 0
+        def any_park_list(actlist, with_details = false)
+          pl = get_park_list_raw().select do |pd|
+            any_activity?(pd, actlist)
           end
+
+          pl.map { |pd| convert_park_data(pd, with_details) } 
+        end
+
+        # Get the list of parks that provide all of the given facilities.
+        # This method calls {#get_park_list_raw} to get the park data, then selects the ones
+        # that provide all of the given facilities.
+        #
+        # @param actlist [Array<String>] An array containing the activities to use for the filtering:
+        #  if all activities in _actlist_ have a nonzero value in the park data, the park is added to the
+        #  return set.
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the blurb).
+        #
+        # @return [Array<Hash>, nil] Returns a string containing the park list. The array elements are
+        #  hashes containing the standardized park data, as returned by {#convert_park_data}.
+        #  Returns +nil+ if it can't find it in the page.
+
+        def all_park_list(actlist, with_details = false)
+          pl = get_park_list_raw().select do |pd|
+            all_activity?(pd, actlist)
+          end
+
+          pl.map { |pd| convert_park_data(pd, with_details) } 
         end
 
         # Get the list of parks that provide camping facilities.
-        # This method calls {#select_park_list}, passing either the value of _actlist_, or (more typically)
-        # the default list of camping activity codes.
+        # This method builds an activity list based on the requested campground types, and then calls
+        # {#any_park_list} with it.
         #
-        # @param actlist [Array<String>] An array containing the activities to use for the filtering.
-        #  uses {CAMPING_ACTIVITY_CODES} if passed as +nil+
+        # @param types [Array<Symbol>] An array listing the campsite types to include in the list; campgrounds
+        #  that offer campsites from the list are added to the return set.
+        #  A +nil+ value indicates that all camping types are to be included.
+        #  See {Cf::Scrubber::Base::CAMPSITE_TYPES}.
+        # @param with_details [Boolean] If +true+, look in the park's detail page for additional data
+        #  (for example, for the blurb).
         #
-        # @return [Array<Hash>, nil] Returns a string containing the park list.
+        # @return [Array<Hash>, nil] Returns a string containing the park list. The array elements are
+        #  hashes containing the standardized park data, as returned by {#convert_park_data}.
         #  Returns +nil+ if it can't find it in the page.
 
-        def select_campground_list(actlist = nil)
-          select_park_list((actlist.is_a?(Array)) ? actlist : CAMPING_ACTIVITY_CODES)
+        def select_campground_list(types = nil, with_details = false)
+          actlist = [ ]
+          tt = (types.is_a?(Array)) ? types : Cf::Scrubber::Base::CAMPSITE_TYPES
+          tt.each { |t| actlist |= CAMPGROUND_TYPES_MAP[t] if CAMPGROUND_TYPES_MAP.has_key?(t) }
+
+          any_park_list(actlist)
         end
 
         # Convert raw park data to a standard format.
@@ -329,6 +373,22 @@ module Cf
         #  (for example, for the blurb).
         #
         # @return [Hash] Returns a hash that contains normalized, converted park data.
+        #  The hash contains the following standard key/value pairs:
+        #  - *:organization* Is +ca:parks+.
+        #  - *:name* The campground name.
+        #  - *:uri* The URL to the campground's details page.
+        #  - *:region* The string +California+.
+        #  - *:area* The value of the +Region+ key in _pd_.
+        #  - *:location* The geographic coordinates of the campground: *:lat*, *:lon*, and *:elevation*.
+        #    Only present if <i>with_details</i> is +true+.
+        #  - *:types* An array listing the types of campsites in the campground; often this will be a one
+        #    element array, but some campgrounds have multiple site types.
+        #  - *:reservation_uri* The URL to the reservation page for the campground.
+        #  - *:blurb* A short description of the campground.
+        #  - *:additional_info* A hash containing information about the campground, as extracted from the
+        #    raw data.
+        #  It also contains scrubber-specific keys:
+        #  - *:raw* A hash containing the raw data (the value of _pd_).
 
         def convert_park_data(pd, with_details = true)
           ptype = pd['type_desc']
@@ -349,6 +409,7 @@ module Cf
 
           cpd = {
             organization: ORGANIZATION_NAME,
+            types: make_types(pd),
             name: "#{pd['long_name']} #{abbr}",
             uri: park_uri(pd),
             region: REGION_NAME,
@@ -357,7 +418,8 @@ module Cf
               lat: pd['Latitude'],
               lon: pd['Longitude']
             },
-            additional_info: add
+            additional_info: add,
+            raw: pd
           }
 
           if with_details
@@ -388,7 +450,9 @@ module Cf
         end
 
         def has_activity?(pd, aid)
-          (pd[aid] == 0) ? false : true
+          # at least one entry (Tijuana Estuary) has null instead of 0
+
+          (pd[aid].nil? || (pd[aid] == 0)) ? false : true
         end
 
         def list_activities(pd, alist)
@@ -398,6 +462,20 @@ module Cf
           end
 
           l
+        end
+
+        def make_types(pd)
+          types = [ ]
+          CAMPGROUND_TYPES_MAP.each { |tk, tv| types << tk if any_activity?(pd, tv) }
+          types
+        end
+
+        def any_activity?(pd, alist)
+          alist.any? { |e| has_activity?(pd, e) }
+        end
+
+        def all_activity?(pd, alist)
+          alist.all? { |e| has_activity?(pd, e) }
         end
 
         def extract_park_blurb(doc, res, pd)

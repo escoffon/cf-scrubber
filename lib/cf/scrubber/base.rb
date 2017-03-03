@@ -8,8 +8,38 @@ module Cf
 
   module Scrubber
     # The base class for scrubbers.
+    #
+    # Scrubbers are expected to generate campground data in a common format: a hash containing a number
+    # of standard keys. Each scrubber can also add scrubber-specific keys.
+    # The common set of keys is:
+    # - *:organization* The name of the organization that controls this campground; for example, for
+    #   the National Forest Service it is +usda:nfs+, and for the California State Park system it
+    #   is +ca:state+.
+    # - *:name* The campground name.
+    # - *:uri* The URL to the campground's details page; this value is expected to be unique across all
+    #   campgrounds and organizations, and it is used as the identifier for the campground.
+    # - *:region* A region that has competence over the campground. This need not be a geographical region:
+    #   it could be a department of the *:organization*, for example. The National Forest Service stores
+    #   the state name here; various state park systems store the state name.
+    # - *:area* A subset of *:region*. For example, the National Forest Service stores the name of the
+    #   national forest (or grassland) where the campground is located; California state parks store the
+    #   name of the district where the campground is located; Oregon and Nevada leave it blank.
+    # - *:location* The geographic coordinates of the campground: *:lat*, *:lon*, and *:elevation*.
+    # - *:types* An array listing the types of campsites in the campground. See {CAMPSITE_TYPES}.
+    # - *:reservation_uri* The URL to the reservation page for the campground.
+    # - *:blurb* A short description of the campground.
+    # - *:additional_info* A hash containing an open-ended collection of properties for this campground.
+    #   The constant {ADDITIONAL_INFO_KEYS} lists standard keys; scrubber subclasses can add their own.
 
     class Base
+      # The standard campsite names.
+      # - *:standard* Standard sites.
+      # - *:group* Group sites accomodate larger numbers of campers.
+      # - *:cabin* Cabins, yurts, and other permanent or semipermanent accomodations.
+      # - *:rv* Accomodations for RVs.
+
+      CAMPSITE_TYPES = [ :standard, :group, :cabin, :rv ]
+
       # The default values for request headers.
 
       DEFAULT_HEADERS = {
@@ -171,6 +201,56 @@ module Cf
         end
 
         res
+      end
+
+      # Convert a relative URL to a full one, filtering out query parameters as instructed.
+      # Calls the class method {.adjust_href}.
+      #
+      # @param [String] href A string containing a URl, which is possibly relative.
+      # @param [String,URI::Generic] base The URI object containing the parsed representation of
+      #  the base URL, or a string containing the base URL.
+      # @param [Array<String>] qf An array containing the names of query string parameters to be
+      #  dropped from the query string.
+      #
+      # @return [String] Returns a string containing the adjusted URL.
+
+      def adjust_href(href, base, qf = [ ])
+        Cf::Scrubber::Base.adjust_href(href, base, qf)
+      end
+
+      # Convert a relative URL to a full one, filtering out query parameters as instructed.
+      #
+      # @param [String] href A string containing a URl, which is possibly relative.
+      # @param [String,URI::Generic] base The URI object containing the parsed representation of
+      #  the base URL, or a string containing the base URL.
+      # @param [Array<String>] qf An array containing the names of query string parameters to be
+      #  dropped from the query string.
+      #
+      # @return [String] Returns a string containing the adjusted URL:
+      #  - Relative URLs are converted to absolute, using the _base_ values.
+      #  - Parameters listed in _qf_ are dropped from the query string.
+
+      def self.adjust_href(href, base, qf = [ ])
+        base_uri = (base.is_a?(String)) ? URI(base) : base
+        h_uri = URI(href)
+
+        if href[0] == '/'
+          uri = base_uri.dup
+          uri.path = h_uri.path
+          uri.fragment = h_uri.fragment
+          uri.query = h_uri.query
+        else
+          uri = h_uri
+        end
+
+        if (qf.count > 0) && !uri.query.nil?
+          qa = uri.query.split('&').select do |e|
+            !qf.include?(e.split('=')[0])
+          end
+          uri.query = qa.join('&')
+        end
+
+        uri.to_s
       end
 
       protected
