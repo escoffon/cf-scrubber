@@ -215,7 +215,7 @@ module Cf
                 if campgrounds.has_key?(camp_url)
                   c = @campgrounds[camp_url]
                 else
-                  c = { name: camp_name, url: camp_url }
+                  c = { name: camp_name, uri: camp_url }
                   @campgrounds[camp_url] = c
                 end
 
@@ -703,7 +703,7 @@ module Cf
             s_href = nil
             doc = Nokogiri::HTML(c_res.body)
             elem, href = get_forest_center_menu_node(c_res, doc, subpage_name, [ ])
-            s_res = get(href)
+            s_res = get(href) if href
           end
 
           s_res
@@ -756,7 +756,12 @@ module Cf
           @campgrounds_map = { }
           @campgrounds = [ ]
 
-          tt.each { |t| scan_campground_pages(t, state_name, state_id, forest_name, forest_id, with_details) }
+          # OK so the first thing we do is scan the camping page (once!) to get the URLs of the listed
+          # subpages: not all national forest sites have all 4 links
+
+          get_forest_camping_subpage_urls(state_id, forest_id, tt).each do |t, url|
+            scan_camping_subpage(url, t, state_name, state_id, forest_name, forest_id, with_details)
+          end
 
           # At this point, we have scanned all the pages for all the required types.
           # @campgrounds contains the list of campground URIs, and @campgrounds_map the map from URIs
@@ -792,13 +797,13 @@ module Cf
         #
         # @param campground [Hash] The campground hash, as returned by {#get_forest_campgrounds}.
         # @option campground [String] :name The campground name.
-        # @option campground [String] :url The URL to the campground detail page.
+        # @option campground [String] :uri The URL to the campground detail page.
         #
         # @return [Hash] Returns a hash of campground properties.
 
         def get_campground_details(campground)
           dh = {}
-          res = get(campground[:url])
+          res = get(campground[:uri])
           if res.is_a?(Net::HTTPOK)
             self.logger.info { "get_campground_details(#{campground[:name]}, #{campground[:state]}, #{campground[:forest]})" }
 
@@ -889,7 +894,7 @@ module Cf
           self.states.each do |sk, sv|
             return sk if sv == state_name
           end
-          self.logger.warn("unknown state identifier: #{stata_name}")
+          self.logger.warn("unknown state identifier: #{state_name}")
           nil
         end
 
@@ -1037,14 +1042,32 @@ module Cf
           [ nil, nil ]
         end
 
-        def scan_campground_pages(type, state_name, state_id, forest_name, forest_id, with_details)
+        # Scans the camping page for a given state/forest and returns the available subpage links.
+
+        def get_forest_camping_subpage_urls(state_id, forest_id, types)
+          urls = { }
+          c_res = get_forest_camping_page(state_id, forest_id)
+          if c_res.is_a?(Net::HTTPOK)
+            doc = Nokogiri::HTML(c_res.body)
+            types.each do |t|
+              elem, href = get_forest_center_menu_node(c_res, doc, CAMPGROUND_TYPES[t], [ ])
+              urls[t] = href unless href.nil?
+            end
+          end
+
+          urls
+        end
+
+        def scan_camping_subpage(url, type, state_name, state_id, forest_name, forest_id, with_details)
           page_name = CAMPGROUND_TYPES[type]
-          res = get_forest_camping_subpage(state_id, forest_id, page_name)
+          res = get(url)
           if res.is_a?(Net::HTTPOK)
             self.logger.info { "scan_campground_pages(#{page_name}, #{state_name}, #{forest_name})" }
 
             boilerplate = {
               organization: ORGANIZATION_NAME,
+              region: state_name,
+              area: forest_name,
               state: state_name,
               state_id: state_id,
               forest: forest_name,

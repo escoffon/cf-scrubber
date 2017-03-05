@@ -2,8 +2,8 @@
 
 Gem::Specification.new do |s|
   s.name        = 'cf-scrubber'
-  s.version     = '0.5.0'
-  s.date        = '2017-03-01'
+  s.version     = '0.5.16'
+  s.date        = '2017-03-03'
   s.summary     = "Campfinder scrubbers"
   s.description = "A gem of scrubbers for various web sites that contain campground information."
   s.authors     = [ "Emil Scoffone" ]

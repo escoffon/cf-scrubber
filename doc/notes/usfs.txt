@@ -1,0 +1,27 @@
+USFS campgrounds are stored in a somewhat complicated hierarchy:
+1. use a AJAX call to get the list of states with national forests
+2. then use an ajax call to get a list of national forests per state
+3. the list includes URLs to each NF page
+4. The NF landing page contains a link to a "Recreation" page for the NF
+5. That page contains a link to "Camping & Cabins"
+6. The "C & C" page contains links to various types of accomodations: "Cabin Rentals", "Campground Camping",
+   "Group Camping," and "RV Camping" (not all may be present)
+7. Each one of these pages contains a list of campground (or other accomodations). This list is
+   hierarchical, with headings like "so and so Ranger District" or "so and so Area". The campgrounds are
+   typically (but unfortunately not always) at the leaf nodes. The HTML itself is just a flat <li> list,
+   and the hierarchical effect is provided by changing the margin-right as needed.
+8. Each <li> contains a link to a details page, which has things like the campground's location and
+   "At a Glance" information.
+
+The scrubber needs to walk this page hierarchy in order to extract campground data.
+
+Note: The Recreation page also has a "OHV Riding & Camping" link that we may want to follow.
+      But maybe not; it doesn't seem to lead to campgrounds.
+Note: Alabama's Nonecuh National Forest 'Camping & Cabins' page only has 'Campground Camping'
+      and 'RV Camping' entries (since other types of accomodations are not available).
+Note: Also, all forests in AL are linked to a single page that covers 'National Forests in Alabama'
+      and the campgrounds are arranged under specific national forest headings in the list e.g.
+      Talladega National Forest
+        Shoal Creek Ranger District
+          Coleman Lake Recreation Area
+This means that the scrubber will think that all campgrounds in AL reside in the last NF loaded.

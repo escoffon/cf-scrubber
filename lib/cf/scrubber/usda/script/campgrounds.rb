@@ -95,7 +95,9 @@ module Cf
             nfs = Cf::Scrubber::Usda::NationalForestService.new(nil,
                                                                 :logger_level => self.parser.options[:level])
 
-            self.parser.options[:states] = nfs.states if self.parser.options[:states].nil?
+            if self.parser.options[:states].nil?
+              self.parser.options[:states] = nfs.states.map { |s| s[1] }
+            end
             self.parser.options[:states].each do |s|
               fl = (self.parser.options[:forests].nil?) ? nfs.forests_for_state(s).keys : self.parser.options[:forests]
               fl.sort.each do |f|

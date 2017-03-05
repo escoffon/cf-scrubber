@@ -353,6 +353,42 @@ class UsdaNFSTest < Minitest::Test
     'Ball Field Dispersed Camping Area' => [ :group ]
   }
 
+  # Alabama's Nonecuh National Forest 'Camping & Cabins' page only has 'Campground Camping'
+  # and 'RV Camping' entries.
+  # Also, all forests are linked to a single page that covers 'National Forests in Alabama'
+  # and the campgrounds are arranged under specific national forest headings in the list e.g.
+  # Talladega National Forest
+  #   Shoal Creek Ranger District
+  #     Coleman Lake Recreation Area
+
+  NONECUH_NF_CAMP_TYPES = {
+    # Technically in Bankhead
+    'Brushy Lake Recreation Area' => [ :standard ],
+    'Clear Creek Recreation Area' => [ :standard, :rv ],
+    'Corinth Recreation Area' => [ :standard, :rv ],
+    'Houston Recreation Area' => [ :standard ],
+    'McDougle Camp' => [ :standard ],
+    'Wolf Pen Hunters Camp' => [ :standard ],
+
+    # Technically in Nonecuh
+    'Open Pond Recreation Area' => [ :standard, :rv ],
+
+    # Technically in Talladega
+    'Hunting Camps (10 sites)' => [ :standard ],
+    'Payne Lake Recreation Area' => [ :standard, :rv ],
+
+    'Big Oak Physically Disabled Hunting Camp' => [ :standard ],
+    'Coleman Lake Recreation Area' => [ :standard, :rv ],
+    'Hunting Camps (4 sites)' => [ :standard ],
+    'Pine Glen Recreation Area' => [ :standard ],
+
+    'Hunter Camps (7 sites)' => [ :standard ],
+    'Turnipseed Campground' => [ :standard ],
+
+    # Technically in Tuskegee
+    'Hunting Camps (14 sites)' => [ :standard ]
+  }
+ 
   def test_campgrounds_list
     nfs = Cf::Scrubber::Usda::NationalForestService.new
 
@@ -389,6 +425,15 @@ class UsdaNFSTest < Minitest::Test
     assert_equal 39.377866, c[:location][:lat]
     assert_equal -120.161783, c[:location][:lon]
     assert_equal 5800, c[:location][:elevation]
+
+    cl = nfs.get_forest_campgrounds('Alabama', 'Conecuh National Forest')
+    c_names = cl.map { |c| c[:name] }
+    assert_equal NONECUH_NF_CAMP_TYPES.keys.sort, c_names.sort
+    c_types = { }
+    cl.each { |c| c_types[c[:name]] = c[:types] }
+    cl.each do |c|
+      assert_equal NONECUH_NF_CAMP_TYPES[c[:name]], c[:types], "Comparing campground types for '#{c[:name]}'"
+    end
   end
 
   def test_campgrounds_script
