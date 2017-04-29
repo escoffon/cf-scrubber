@@ -7,6 +7,9 @@
 # Ignore bundler config.
 /.bundle
 
+# Ignore Gemfile.lock: we do not put it in the repository, since this is a gem
+Gemfile.lock
+
 # Ignore emacs save files
 *~
 
