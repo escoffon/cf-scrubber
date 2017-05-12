@@ -1,0 +1,34 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/ga/script'
+
+class PrintActivities < Cf::Scrubber::Ga::Script::Activities
+  class Parser < Cf::Scrubber::Ga::Script::Activities::Parser
+    def initialize()
+      rv = super()
+
+      p = self.parser
+
+      p.banner = "Usage: ga_parks_activities [options]\n\nLists activities for GA state parks"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintActivities::Parser.new)
+  end
+
+  def exec()
+    total = 0
+    self.process do |sp, act|
+      printf("%-24s : %s\n", act[:activity_id], act[:name]);
+      total += 1
+    end
+    print("total: #{total}\n")
+  end
+end
+
+script = PrintActivities.new()
+script.parser.parse(ARGV)
+script.exec

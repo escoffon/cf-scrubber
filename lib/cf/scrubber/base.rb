@@ -32,13 +32,25 @@ module Cf
     #   The constant {ADDITIONAL_INFO_KEYS} lists standard keys; scrubber subclasses can add their own.
 
     class Base
-      # The standard campsite names.
-      # - *:standard* Standard sites.
-      # - *:group* Group sites accomodate larger numbers of campers.
-      # - *:cabin* Cabins, yurts, and other permanent or semipermanent accomodations.
-      # - *:rv* Accomodations for RVs.
+      # Standard campsite: tent accomodations.
 
-      CAMPSITE_TYPES = [ :standard, :group, :cabin, :rv ]
+      TYPE_STANDARD = :standard
+
+      # Group campsite: tent accomodations for groups (multiple tents?).
+
+      TYPE_GROUP = :group
+
+      # Cabins, yurts, and other permanent or semipermanent accomodations.
+
+      TYPE_CABIN = :cabin
+
+      # Accomodations for RVs.
+
+      TYPE_RV = :rv
+
+      # The standard campsite names.
+
+      CAMPSITE_TYPES = [ TYPE_STANDARD, TYPE_GROUP, TYPE_CABIN, TYPE_RV ]
 
       # The default values for request headers.
 
@@ -64,6 +76,7 @@ module Cf
                               :reservations,
                               :restrictions,
                               :restroom,
+                              :things_to_do,
                               :usage,
                               :water
                              ]
