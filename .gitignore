@@ -17,7 +17,7 @@ Gemfile.lock
 .DS_Store
 
 # Ignore the generated documentation
-doc/yard
+doc/out
 
 # Ignore "saved" files
 *-s
@@ -28,3 +28,6 @@ doc/yard
 # Ignore .log and .dat files
 *.log
 *.dat
+
+# Ignore scrub files
+*.scrub

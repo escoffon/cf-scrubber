@@ -1,2 +1,2 @@
---protected --output-dir doc/yard --markup rdoc --readme README.yard \
+--protected --output-dir doc/out/yard --markup rdoc --readme README.yard \
     lib/cf/scrubber.rb lib/cf/scrubber/\*\*/\*.rb
