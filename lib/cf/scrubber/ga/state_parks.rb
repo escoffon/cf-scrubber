@@ -328,14 +328,24 @@ module Cf
             end
 
             if main
+              # Most GPS coordinates use a pipeline separator, but at least one park uses a comma
+
+              gps_re = /N\s+([+-]?[0-9]+\.[0-9]+)\s*[\|,]\s+W\s+([+-]?[0-9]+\.[0-9]+)/
               main.css('h3').each do |h3n|
-                if h3n.text() =~ /GPS Coord/
-                  tn = h3n.next_sibling
-                  txt = tn.text()
-                  if txt =~ /N\s+([+-]?[0-9]+\.[0-9]+)\s+\|\s+W\s+([+-]?[0-9]+\.[0-9]+)/
+                h3_txt = h3n.text()
+                if h3_txt =~ /GPS Coord/
+                  # Unfortunately, some park pages put the coordinates inside the h3 element, where
+                  # most pages put them on a following text node, so we need to account for both
+
+                  m = nil
+                  if h3_txt =~ gps_re
                     m = Regexp.last_match
-                    return { lat: m[1], lon: m[2] }
+                  else
+                    tn = h3n.next_sibling
+                    txt = tn.text()
+                    m = Regexp.last_match if txt =~ gps_re
                   end
+                  return { lat: m[1], lon: m[2] } if m
                 end
               end
             end
