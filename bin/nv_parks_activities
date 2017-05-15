@@ -3,12 +3,11 @@
 require 'cf/scrubber/nv/script'
 
 class PrintActivities < Cf::Scrubber::Nv::Script::Activities
-  class Parser < Cf::Scrubber::Nv::Script::Activities::Parser
+  class Parser < Cf::Scrubber::Script::Parser
     def initialize()
       rv = super()
 
       p = self.parser
-
       p.banner = "Usage: nv_parks_activities [options]\n\nLists activities for NV state parks"
 
       rv
@@ -19,7 +18,7 @@ class PrintActivities < Cf::Scrubber::Nv::Script::Activities
     super(PrintActivities::Parser.new)
   end
 
-  def exec()
+  def list_activities()
     total = 0
     self.process do |sp, act|
       printf("%-24s : %s\n", act[:activity_id], act[:name]);
@@ -31,4 +30,4 @@ end
 
 script = PrintActivities.new()
 script.parser.parse(ARGV)
-script.exec
+script.list_activities

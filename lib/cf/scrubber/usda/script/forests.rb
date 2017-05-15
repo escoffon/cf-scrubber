@@ -14,42 +14,24 @@ module Cf
           #
           # The base class defines the following options:
           # - *-sSTATES* (*--states=STATES*) to set the list of states for which to list forests.
-          # - *-vLEVEL* (*--level=LEVEL*) to set the logger's output level.
-          # - *-h* (*--help*) to emit a help statement.
-          #
-          # Subclasses may extend it to add their own options. For example:
-          #   class MyParser < Cf::Scrubber::Usda::Script::States::Parser
-          #     def initialize()
-          #       super('my banner')
-          #       self.parser.on_head("-i", "--with-index", "Hels tring here") do |n|
-          #         self.options[:show_index] = true
-          #       end
-          #     end
-          #   end
 
           class Parser < Cf::Scrubber::Script::Parser
             # Initializer.
 
             def initialize()
-              opt_parser = OptionParser.new do |opts|
-                opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger clsss (WARN, INFO, etc...). Defaults to WARN.") do |l|
-                  self.options[:level] = "Logger::#{l}"
-                end
+              rv = super()
+              opts = self.parser
 
-                opts.on("-sSTATES", "--states=STATES", "Comma-separated list of states for which to list forests. Shows all states if not given. You may use two-character state codes.") do |sl|
-                  self.options[:states] = sl.split(',').map do |s|
-                    t = s.strip
-                    (t.length == 2) ? t.upcase : t
-                  end
-                end
-
-                opts.on("-h", "--help", "Show help") do
-                  puts opts
-                  exit
+              opts.on_head("-sSTATES", "--states=STATES", "Comma-separated list of states for which to list forests. Shows all states if not given. You may use two-character state codes.") do |sl|
+                self.options[:states] = sl.split(',').map do |s|
+                  t = s.strip
+                  (t.length == 2) ? t.upcase : t
                 end
               end
 
-              super(opt_parser, { level: Logger::WARN, states: nil } )
+              self.options.merge!({ states: nil })
+
+              rv
             end
           end
 
@@ -72,8 +54,10 @@ module Cf
           #  - *idx* is the corresponding forest identifier.
 
           def process(&blk)
-            nfs = Cf::Scrubber::Usda::NationalForestService.new(nil,
-                                                                :logger_level => self.parser.options[:level])
+            nfs = Cf::Scrubber::Usda::NationalForestService.new(nil, {
+                                                                  :logger => self.parser.options[:logger],
+                                                                  :logger_level => self.parser.options[:logger_level]
+                                                                })
 
             self.parser.options[:states] = nfs.states if self.parser.options[:states].nil?
             self.parser.options[:states].each do |s|

@@ -74,7 +74,7 @@ module Cf
 
         # Build the park list from the contents of the park list items in the index page.
         # Note that this method loads just the local data, and clients will have to call
-        # {#extract_details_park_data} in order to have a fully populated set.
+        # {#extract_park_details} in order to have a fully populated set.
         # The reason we split this is to avoid fetching detail pages for parks that may be dropped by
         # a filter later.
         #
@@ -170,7 +170,7 @@ module Cf
         #
         # @param [Array<Hash>] parks An array of park data, typically as returned by {#get_park_list}.
         #  If +nil+, initialize it via a call to {#get_park_list}.
-        # @param [Boolean] login If +true+, log an info line for each park found.
+        # @param [Boolean] logit If +true+, log an info line for each park found.
         #
         # @return [Array<Hash>, nil] Returns an array of hashes containing the park data. Each contains
         #  the keys returned by {#get_park_list} and by {#get_park_details}, and the following keys:
@@ -216,6 +216,10 @@ module Cf
 
             if p[:uri][0] == '/'
               p[:uri] = self.root_url + p[:uri]
+            end
+
+            if logit
+              self.logger.info { "filled park data for (#{p[:region]}) (#{p[:area]}) (#{p[:name]})" }
             end
           end
 

@@ -1,31 +1,14 @@
 #! /usr/bin/env ruby
 
-require 'json'
 require 'cf/scrubber/usda/script'
 
 class PrintCampgrounds < Cf::Scrubber::Usda::Script::Campgrounds
   class Parser < Cf::Scrubber::Usda::Script::Campgrounds::Parser
-    DATA_FORMATS = [ :raw, :json, :name ]
-    STATE_FORMATS = [ :full, :short ]
-
     def initialize()
       rv = super()
 
-      self.options.merge!({ state_format: :full, data_format: :raw })
-
       p = self.parser
-
       p.banner = "Usage: usda_nfs_campgrounds [options]\n\nList campgrounds for one or more states and forests"
-
-      p.on_head("-SSTATEFORMAT", "--state-format=STATEFORMAT", "The output format to use for the state name: full or short (two-letter code).") do |f|
-        f = f.to_sym
-        self.options[:state_format] = f if STATE_FORMATS.include?(f)
-      end
-
-      p.on_head("-DDATAFORMAT", "--data-format=DATAFORMAT", "The output format to use: raw, json, or name.") do |f|
-        f = f.to_sym
-        self.options[:data_format] = f if DATA_FORMATS.include?(f)
-      end
       
       rv
     end
@@ -34,46 +17,8 @@ class PrintCampgrounds < Cf::Scrubber::Usda::Script::Campgrounds
   def initialize()
     super(PrintCampgrounds::Parser.new)
   end
-
-  def exec()
-    # if the format is :name, we don't need the details
-
-    self.parser.options[:show_details] = false if self.parser.options[:format] == :name
-
-    cur_state = ''
-    cur_forest = ''
-
-    self.process do |nfs, s, f, c|
-      if cur_state != s
-        if self.parser.options[:state_format] == :short
-          printf("#---- %s\n", nfs.state_code(s))
-        else
-          printf("#---- %s\n", s)
-        end
-
-        cur_state = s
-        cur_forest = ''
-      end
-
-      if cur_forest != f
-        printf("#  -- %s\n", f)
-        cur_forest = f
-      end
-
-      case self.parser.options[:data_format]
-      when :raw
-        print("#{c}\n")
-      when :json
-        print("#{JSON.generate(c)}\n")
-      when :name
-        print("#{c[:name]}\n")
-      else
-        print("#{c}\n")
-      end
-    end
-  end
 end
 
 script = PrintCampgrounds.new()
 script.parser.parse(ARGV)
-script.exec
+script.process_campgrounds

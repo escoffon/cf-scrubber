@@ -362,7 +362,7 @@ module Cf
           tt = (types.is_a?(Array)) ? types : Cf::Scrubber::Base::CAMPSITE_TYPES
           tt.each { |t| actlist |= CAMPGROUND_TYPES_MAP[t] if CAMPGROUND_TYPES_MAP.has_key?(t) }
 
-          any_park_list(actlist)
+          any_park_list(actlist, with_details)
         end
 
         # Convert raw park data to a standard format.

@@ -85,8 +85,8 @@ module Cf
       #
       # @param root_url [String] The root URL (if any) for the web site to scrub.
       # @param opts [Hash] Additional configuration options for the scrubber.
-      # @option opts [Logger] :logger The logger object to use; if none is specified, the scrubber creates a
-      #  standard object writing to +STDERR+.
+      # @option opts [Logger] :logger The logger object to use. If none is specified, the scrubber creates a
+      #  standard object writing to +STDERR+. If +nil+ is specified, no logging is done.
       # @option opts :logger_level The logger level to use; this is one of the levels defined by the +Logger+
       #  class. The default value is +Logger::INFO+. This option can also be passed as a string, in which
       #  case the initializer attempts to convert it to a +Logger+ constant.
@@ -94,20 +94,25 @@ module Cf
       def initialize(root_url = nil, opts = {})
         @root_url = root_url
         if opts.has_key?(:logger)
-          @logger = opts[:logger]
+          if opts[:logger].is_a?(Logger)
+            @logger = opts[:logger]
+          else
+            @logger = Logger.new(nil)
+          end
         else
           @logger = Logger.new(STDERR)
         end
-        logger.level = if opts.has_key?(:logger_level)
-                         lvl = opts[:logger_level]
-                         if lvl.is_a?(String)
-                           lvl.split('::').inject(Object) { |o,c| o.const_get c }
-                         else
-                           lvl
-                         end
-                       else
-                         Logger::INFO
-                       end
+
+        @logger.level = if opts.has_key?(:logger_level)
+                          lvl = opts[:logger_level]
+                          if lvl.is_a?(String)
+                            lvl.split('::').inject(Object) { |o,c| o.const_get c }
+                          else
+                            lvl
+                          end
+                        else
+                          Logger::INFO
+                        end
       end
 
       # @!attribute [r] root_url

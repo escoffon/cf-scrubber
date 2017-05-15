@@ -3,7 +3,7 @@
 require 'cf/scrubber/ga/script'
 
 class PrintActivities < Cf::Scrubber::Ga::Script::Activities
-  class Parser < Cf::Scrubber::Ga::Script::Activities::Parser
+  class Parser < Cf::Scrubber::Script::Parser
     def initialize()
       rv = super()
 
@@ -19,9 +19,9 @@ class PrintActivities < Cf::Scrubber::Ga::Script::Activities
     super(PrintActivities::Parser.new)
   end
 
-  def exec()
+  def list_activities()
     total = 0
-    self.process do |sp, act|
+    self.exec do |sp, act|
       printf("%-24s : %s\n", act[:activity_id], act[:name]);
       total += 1
     end
@@ -31,4 +31,4 @@ end
 
 script = PrintActivities.new()
 script.parser.parse(ARGV)
-script.exec
+script.list_activities

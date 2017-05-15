@@ -3,12 +3,11 @@
 require 'cf/scrubber/ca/script'
 
 class PrintActivities < Cf::Scrubber::Ca::Script::Activities
-  class Parser < Cf::Scrubber::Ca::Script::Activities::Parser
+  class Parser < Cf::Scrubber::Script::Parser
     def initialize()
       rv = super()
 
       p = self.parser
-
       p.banner = "Usage: ca_parks_activities [options]\n\nLists activities for CA state parks"
 
       rv
@@ -19,8 +18,8 @@ class PrintActivities < Cf::Scrubber::Ca::Script::Activities
     super(PrintActivities::Parser.new)
   end
 
-  def exec()
-    self.process do |sp, act|
+  def list_activities()
+    self.exec do |sp, act|
       printf("%4d : %s\n", act[:activity_id], act[:name]);
     end
   end
@@ -28,4 +27,4 @@ end
 
 script = PrintActivities.new()
 script.parser.parse(ARGV)
-script.exec
+script.list_activities

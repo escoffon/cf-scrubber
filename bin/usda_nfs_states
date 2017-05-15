@@ -3,14 +3,11 @@
 require 'cf/scrubber/usda/script'
 
 class PrintStates < Cf::Scrubber::Usda::Script::States
-  class Parser < Cf::Scrubber::Usda::Script::States::Parser
+  class Parser < Cf::Scrubber::Script::Parser
     FORMATS = [ :full, :short ]
 
     def initialize()
       rv = super()
-
-      self.options.merge!({ show_index: false, format: :full })
-
       p = self.parser
 
       p.banner = "Usage: usda_nfs_states [options]\n\nLists states with a national forest or grassland"
@@ -23,7 +20,9 @@ class PrintStates < Cf::Scrubber::Usda::Script::States
         f = f.to_sym
         self.options[:format] = f if FORMATS.include?(f)
       end
-      
+
+      self.options.merge!({ show_index: false, format: :full })
+
       rv
     end
   end

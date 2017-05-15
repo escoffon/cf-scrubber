@@ -8,9 +8,6 @@ class PrintForests < Cf::Scrubber::Usda::Script::Forests
 
     def initialize()
       rv = super()
-
-      self.options.merge!({ show_index: false, format: :full })
-
       p = self.parser
 
       p.banner = "Usage: usda_nfs_forests [options]\n\nLists national forests or grasslands for one or more states"
@@ -23,7 +20,9 @@ class PrintForests < Cf::Scrubber::Usda::Script::Forests
       p.on_head("-i", "--with-index", "If present, emit the state indeces as well as names") do |n|
         self.options[:show_index] = true
       end
-      
+
+      self.options.merge!({ show_index: false, format: :full })
+
       rv
     end
   end
