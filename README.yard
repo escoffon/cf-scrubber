@@ -8,6 +8,7 @@ The following web sites are currently supported:
 - The National Forest Service ({Cf::Scrubber::Usda::NationalForestService}). (The National Forest Service
   is part of the US Department of Agriculture.)
 - The California State Park System ({Cf::Scrubber::Ca::StateParks}).
+- The Georgia State Park System ({Cf::Scrubber::Ga::StateParks}).
 - The Nevada State Park System ({Cf::Scrubber::Nv::StateParks}).
 - The Oregon State Park System ({Cf::Scrubber::Or::StateParks}).
 
@@ -17,6 +18,9 @@ In addition to the scrubber classses, the gem provides a number of scripts in th
 - +usda_nfs_campgrounds+ lists the campgrounds (grouped by forest) in one or more states.
 - +ca_parks_activities+ lists the activity codes from the CA state park system page.
 - +ca_parks_list+ lists parks in the CA state park system; you can list all parks, or only the ones
+  with camping facilities.
+- +ga_parks_activities+ lists the activity (facilities) codes from the GA state park system page.
+- +ga_parks_list+ lists parks in the GA state park system; you can list all parks, or only the ones
   with camping facilities.
 - +nv_parks_activities+ lists the activity (facilities) codes from the NV state park system page.
 - +nv_parks_list+ lists parks in the NV state park system; you can list all parks, or only the ones
