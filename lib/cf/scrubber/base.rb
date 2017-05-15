@@ -85,6 +85,10 @@ module Cf
       #
       # @param root_url [String] The root URL (if any) for the web site to scrub.
       # @param opts [Hash] Additional configuration options for the scrubber.
+      # @option opts [String, IO] :output A stream object, or a string containing a file path for the
+      #  output to use when generating data. The stream must have been opened for writing. The string will
+      #  be opened for writing with the truncate option (existing files are overwritten).
+      #  If not specified, +STDOUT+ is used.
       # @option opts [Logger] :logger The logger object to use. If none is specified, the scrubber creates a
       #  standard object writing to +STDERR+. If +nil+ is specified, no logging is done.
       # @option opts :logger_level The logger level to use; this is one of the levels defined by the +Logger+
@@ -93,6 +97,26 @@ module Cf
 
       def initialize(root_url = nil, opts = {})
         @root_url = root_url
+
+        if opts.has_key?(:output)
+          if opts[:output].is_a?(IO)
+            @output = opts[:output]
+          elsif opts[:output].is_a?(String)
+            case opts[:output]
+            when 'STDOUT'
+              @output = STDOUT
+            when 'STDERR'
+              @output = STDERR
+            else
+              @output = File.open(opts[:output], 'w')
+            end
+          else
+            @output = STDOUT
+          end
+        else
+          @output = STDOUT
+        end
+
         if opts.has_key?(:logger)
           if opts[:logger].is_a?(Logger)
             @logger = opts[:logger]
@@ -124,6 +148,11 @@ module Cf
       # The logger associated with the scrubber.
       # @return [Object] the current logger.
       attr_accessor :logger
+
+      # @!attribute [rw] outpput
+      # The output stream to use.
+      # @return [IO] the current output stream.
+      attr_accessor :output
 
       # Get a page.
       #

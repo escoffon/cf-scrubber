@@ -19,9 +19,12 @@ class PrintActivities < Cf::Scrubber::Ca::Script::Activities
   end
 
   def list_activities()
+    total = 0
     self.exec do |sp, act|
-      printf("%4d : %s\n", act[:activity_id], act[:name]);
+      self.output.printf("%4d : %s\n", act[:activity_id], act[:name]);
+      total += 1
     end
+    self.output.print("total: #{total}\n")
   end
 end
 

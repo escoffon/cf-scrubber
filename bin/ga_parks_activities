@@ -22,10 +22,10 @@ class PrintActivities < Cf::Scrubber::Ga::Script::Activities
   def list_activities()
     total = 0
     self.exec do |sp, act|
-      printf("%-24s : %s\n", act[:activity_id], act[:name]);
+      self.output.printf("%-24s : %s\n", act[:activity_id], act[:name]);
       total += 1
     end
-    print("total: #{total}\n")
+    self.output.print("total: #{total}\n")
   end
 end
 

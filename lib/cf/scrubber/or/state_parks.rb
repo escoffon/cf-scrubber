@@ -320,7 +320,7 @@ module Cf
             build_park_data(ple, with_details)
           end
           if @_enable_global_features
-            _global_features().keys.sort.each { |fk| printf("%-24s : #{_global_feature(fk)}\n", fk) }
+            _global_features().keys.sort.each { |fk| self.output.printf("%-24s : #{_global_feature(fk)}\n", fk) }
           end
           rv
         end
@@ -386,7 +386,7 @@ module Cf
           end
 
           if @_enable_global_features
-            _global_features().keys.sort.each { |fk| printf("%-24s : #{_global_feature(fk)}\n", fk) }
+            _global_features().keys.sort.each { |fk| self.output.printf("%-24s : #{_global_feature(fk)}\n", fk) }
           end
           rv
         end

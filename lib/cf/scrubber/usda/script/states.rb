@@ -29,6 +29,7 @@ module Cf
 
           def process(&blk)
             nfs = Cf::Scrubber::Usda::NationalForestService.new(nil, {
+                                                                  :output => self.parser.options[:output],
                                                                   :logger => self.parser.options[:logger],
                                                                   :logger_level => self.parser.options[:logger_level]
                                                                 })

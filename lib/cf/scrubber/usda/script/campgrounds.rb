@@ -70,9 +70,9 @@ module Cf
             exec do |nfs, c, s, f|
               if @cur_state != s
                 if self.parser.options[:state_format] == :short
-                  printf("#-- State %s\n", nfs.state_code(s))
+                  self.output.printf("#-- State %s\n", nfs.state_code(s))
                 else
-                  printf("#-- State %s\n", s)
+                  self.output.printf("#-- State %s\n", s)
                 end
 
                 @cur_state = s
@@ -80,7 +80,7 @@ module Cf
               end
 
               if @cur_forest != f
-                printf("#-- Forest %s\n", f)
+                self.output.printf("#-- Forest %s\n", f)
                 @cur_forest = f
               end
 
@@ -116,6 +116,7 @@ module Cf
 
           def process(&blk)
             nfs = Cf::Scrubber::Usda::NationalForestService.new(nil, {
+                                                                  :output => self.parser.options[:output],
                                                                   :logger => self.parser.options[:logger],
                                                                   :logger_level => self.parser.options[:logger_level]
                                                                 })

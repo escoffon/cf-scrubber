@@ -28,6 +28,7 @@ module Cf
 
           def process(&blk)
             sp = Cf::Scrubber::Ga::StateParks.new(nil, {
+                                                    :output => self.parser.options[:output],
                                                     :logger => self.parser.options[:logger],
                                                     :logger_level => self.parser.options[:logger_level]
                                                   })

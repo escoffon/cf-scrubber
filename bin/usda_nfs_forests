@@ -31,24 +31,24 @@ class PrintForests < Cf::Scrubber::Usda::Script::Forests
     super(PrintForests::Parser.new)
   end
 
-  def exec()
+  def list_forests()
     cur_state = ''
 
-    self.process do |nfs, s, f, idx|
+    self.exec do |nfs, s, f, idx|
       if cur_state != s
         if self.parser.options[:format] == :short
-          printf("%s\n", nfs.state_code(s))
+          self.output.printf("%s\n", nfs.state_code(s))
         else
-          printf("%s\n", s)
+          self.output.printf("%s\n", s)
         end
 
         cur_state = s
       end
 
       if self.parser.options[:show_index]
-        printf("  %-42s: %d\n", f, idx)
+        self.output.printf("  %-42s: %d\n", f, idx)
       else
-        print("  #{f}\n")
+        self.output.print("  #{f}\n")
       end
     end
   end
@@ -56,5 +56,5 @@ end
 
 script = PrintForests.new()
 script.parser.parse(ARGV)
-script.exec
+script.list_forests
 

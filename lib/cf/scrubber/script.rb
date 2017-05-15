@@ -8,6 +8,8 @@ module Cf
     module Script
       # Base class for option parsers.
       # This class creates an options parser and registers the following standard options:
+      # - *-oFILE* (*--output-file=FILE*) The file to use for the output. If not present, use STDOUT.
+      # - *-lFILE* (*--log-file=FILE*) The file to use for the logger. If not present, use STDERR.
       # - *-vLEVEL* (*--verbosity=LEVEL*) Sets the logger level; this is one of the level constants defined
       #   by the Logger class (WARN, INFO, etc...). Defaults to WARN.
       # - *-?* Show help; we use *-?* instead of *-h* because the Rails console runner catches *-h*.
@@ -42,6 +44,10 @@ module Cf
 
         def initialize()
           @parser = OptionParser.new do |opts|
+            opts.on("-oFILE", "--output-file=FILE", "The file to use for the output. If not present, use STDOUT") do |l|
+              self.options[:out_file] = l
+            end
+
             opts.on("-lFILE", "--log-file=FILE", "The file to use for the logger. If not present, use STDERR") do |l|
               self.options[:log_file] = l
             end
@@ -56,7 +62,7 @@ module Cf
             end
           end
 
-          @options = { log_file: nil, logger_level: Logger::WARN }
+          @options = { out_file: nil, log_file: nil, logger_level: Logger::WARN }
         end
 
         # Parse options and return them.
@@ -83,9 +89,14 @@ module Cf
         attr_reader :parser
 
         # @!attribute [r]
-        # The logger object.
+        # @return [Logger] the logger object.
 
         attr_reader :logger
+
+        # @!attribute [r]
+        # @return [IO] the output stream.
+
+        attr_reader :output
 
         # Initializer.
         #
@@ -94,19 +105,22 @@ module Cf
         def initialize(parser)
           @parser = parser
           @logger = nil
+          @output = nil
         end
 
         # Execute the script.
         # This method performs the following operations:
         # 1. Calls {#setup_log} to set up the logger object: log file and log level.
-        # 2. Calls {#process_init}.
-        # 3. Calls {#process}, passing the block in _blk_.
-        # 4. Calls {#process_end}
+        # 2. Calls {#setup_output} to set up the output stream.
+        # 3. Calls {#process_init}.
+        # 4. Calls {#process}, passing the block in _blk_.
+        # 5. Calls {#process_end}
         #
         # @param blk [Block] The block to pass to the processor.
 
         def exec(&blk)
           setup_log
+          setup_output
           process_init
           process(&blk)
           process_end
@@ -149,6 +163,32 @@ module Cf
           elsif lvl.is_a?(Integer)
             self.logger.level = lvl
           end
+        end
+
+        # Set up the output stream.
+        # Sets up the output file and log level based on the {#parser}'s *-o* flag..
+        # If the *-o* flag is +nil+, the script writes to +STDOUT+.
+        # If it is the string +STDOUT+ or +STDERR+, the script writes to the corresponding output stream.
+        # Any other string values are assumed to be the path to an output file, which is opened in create mode.
+        # Any other value logs to +STDOUT+.
+        #
+        # The method also places the output stream in the *:output* option of the parser.
+
+        def setup_output()
+          outfile = self.parser.options[:out_file]
+          if outfile.is_a?(String)
+            case outfile
+            when 'STDOUT'
+              @output = STDOUT
+            when 'STDERR'
+              @output = STDERR
+            else
+              @output = File.open(outfile, 'w')
+            end
+          else
+            @output = STDOUT
+          end
+          self.parser.options[:output] = @output
         end
 
         # Initialize processing.
@@ -209,7 +249,7 @@ module Cf
               self.options[:all] = true
             end
 
-            self.options.merge!({ data_format: :raw, all: false, types: nil })
+            self.options.merge!({ data_format: :json, all: false, types: nil })
 
             rv
           end
@@ -232,9 +272,9 @@ module Cf
         def process_init()
           opts = @parser.options
 
-          print("#-- Scrubber #{self.class.name} - #{Time.new.to_s}\n")
-          print("#-- Format #{opts[:data_format]}\n") if opts.has_key?(:data_format)
-          opts.each { |ok, ov| print("#-- Option #{ok} : #{ov}\n") }
+          self.output.print("#-- Scrubber #{self.class.name} - #{Time.new.to_s}\n")
+          self.output.print("#-- Format #{opts[:data_format]}\n") if opts.has_key?(:data_format)
+          opts.each { |ok, ov| self.output.print("#-- Option #{ok} : #{ov}\n") }
         end
 
         # End processing: emit a dump footer.
@@ -242,7 +282,7 @@ module Cf
         
         def process_end()
           opts = @parser.options
-          print("#-- EOD\n") if opts.has_key?(:data_format) && (opts[:data_format] != :name)
+          self.output.print("#-- EOD\n") if opts.has_key?(:data_format) && (opts[:data_format] != :name)
         end
 
         # Emit campground data.
@@ -255,16 +295,16 @@ module Cf
 
           case format
           when :raw
-            print("#-- Campground #{pd[:uri]}\n")
-            print("#{pd}\n");
+            self.output.print("#-- Campground #{pd[:uri]}\n")
+            self.output.print("#{pd}\n");
           when :json
-            print("#-- Campground #{pd[:uri]}\n")
-            print("#{JSON.generate(pd)}\n")
+            self.output.print("#-- Campground #{pd[:uri]}\n")
+            self.output.print("#{JSON.generate(pd)}\n")
           when :name
-            print("#{pd[:name]} -- #{pd[:uri]}\n")
+            self.output.print("#{pd[:name]} -- #{pd[:uri]}\n")
           else
-            print("#-- Campground #{pd[:uri]}\n")
-            print("#{pd}\n")
+            self.output.print("#-- Campground #{pd[:uri]}\n")
+            self.output.print("#{pd}\n")
           end
         end
       end

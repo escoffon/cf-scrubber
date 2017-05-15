@@ -31,17 +31,17 @@ class PrintStates < Cf::Scrubber::Usda::Script::States
     super(PrintStates::Parser.new)
   end
 
-  def exec()
-    self.process do |nfs, s, idx|
+  def list_states()
+    self.exec do |nfs, s, idx|
       if self.parser.options[:show_index]
         if self.parser.options[:format] == :short
-          printf("%s: %d\n", nfs.state_code(s), s[s])
+          self.output.printf("%s: %d\n", nfs.state_code(s), s[s])
         else
-          printf("%-18s: %d\n", s, idx)
+          self.output.printf("%-18s: %d\n", s, idx)
         end
       else
         s = nfs.state_code(s) if self.parser.options[:format] == :short
-        print("#{s}\n")
+        self.output.print("#{s}\n")
       end
     end
   end
@@ -49,5 +49,5 @@ end
 
 script = PrintStates.new()
 script.parser.parse(ARGV)
-script.exec
+script.list_states
 
