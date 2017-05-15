@@ -1112,7 +1112,7 @@ module Cf
           box.css('div.right-box').each do |n|
             k = n.text().strip
             if cur.is_a?(Symbol)
-              h[cur] = k.to_f
+              h[cur] = k
               cur = nil
             else
               if k =~ /([A-Z][a-z]+) :/
