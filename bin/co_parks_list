@@ -1,0 +1,24 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/co/script'
+
+class PrintParkList < Cf::Scrubber::Co::Script::ParkList
+  class Parser < Cf::Scrubber::Script::CampgroundList::Parser
+    def initialize()
+      rv = super()
+
+      p = self.parser
+      p.banner = "Usage: co_parks_list [options]\n\nList CO state parks"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintParkList::Parser.new)
+  end
+end
+
+script = PrintParkList.new()
+script.parser.parse(ARGV)
+script.process_campgrounds

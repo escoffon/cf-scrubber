@@ -2,6 +2,7 @@ module Cf::Scrubber
   class ScrubbersGenerator < Rails::Generators::Base
     README = 'README.txt'
     SCRUBBERS = [ 'ca_parks_activities', 'ca_parks_list',
+                  'co_parks_list',
                   'ga_parks_activities', 'ga_parks_list',
                   'nv_parks_activities', 'nv_parks_list',
                   'or_parks_list',
