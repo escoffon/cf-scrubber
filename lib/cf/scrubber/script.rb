@@ -52,7 +52,7 @@ module Cf
               self.options[:log_file] = l
             end
 
-            opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger clsss (WARN, INFO, etc...). Defaults to WARN.") do |l|
+            opts.on("-vLEVEL", "--verbosity=LEVEL", "Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.") do |l|
               self.options[:logger_level] = "Logger::#{l}"
             end
 
