@@ -33,22 +33,28 @@ module Cf
         INDEX_PATH = '/placestogo/parks'
 
         # The partial URL of the section page containing directions to the park.
-        MAP_URL = '/Pages/MapsDirections.aspx'
+        MAP_URL = 'Pages/MapsDirections.aspx'
 
         # The names of the section page containing directions to the park.
         MAP_MENU = [ 'Maps and Directions', MAP_URL ]
 
         # The partial URL of the section page containing the list of facilities for the park.
-        FACILITIES_URL = '/Pages/Facilities.aspx'
+        FACILITIES_URL = 'Pages/Facilities.aspx'
 
         # The names of the section page containing the list of facilities for the park.
         FACILITIES_MENU = [ 'Park Facilities', 'SWA Facilities', FACILITIES_URL ]
 
         # The partial URL of the section page containing the list of activities for the park.
-        ACTIVITIES_URL = '/Pages/Activities.aspx'
+        ACTIVITIES_URL = 'Pages/Activities.aspx'
 
         # The name of the section page containing the list of activities for the park.
         ACTIVITIES_MENU = [ 'Park Activities', 'SWA Activities', ACTIVITIES_URL ]
+
+        # The partial URL of the section page containing camping information.
+        CAMPING_URL = 'Pages/Camping.aspx'
+
+        # The names of the section page containing camping information.
+        CAMPING_MENU = [ 'Camping', CAMPING_URL ]
 
         # The list of known facilities.
 
@@ -109,7 +115,7 @@ module Cf
           'Boating' => {},
           'Cabins and Yurts' => nil,		# ignored
           'Camping' => {
-#            no: [ Regexp.new('no camping', Regexp::IGNORECASE) ]
+            no: [ Regexp.new('no camping', Regexp::IGNORECASE) ]
           },
           'Cross-country Skiing' => {},
           'Dog-friendly' => {},
@@ -194,35 +200,35 @@ module Cf
 
         # Given a park's local data, get the park details from the details page.
         #
-        # @param [Hash] data The park local data, as returned by {#get_park_list}.
+        # @param [Hash] lpd The park local data, as returned by {#get_park_list}.
         # @param [Boolean] logit Set to +true+ to log an info line that the park data were fetched.
         #
         # @return [Hash] Returns a hash containing park data that was extracted from the park detail page:
         #  - *:name* A string containing a more complete name for the park.
         #  - *:types* An array listing the types of campsites in the campground; often this will be a one
         #    element array, but some campgrounds have multiple site types.
-        #  - *:reservation_url* The URL to the reservation page, if one is available.
+        #  - *:reservation_uri* The URL to the reservation page, if one is available.
         #  - *:location* The geographic coordinates of the campground: *:lat*, *:lon*, and *:elevation*.
         #  - *:amenities* The (HTML) contents of the "Accomodations and Facilities" section.
         #  - *:things_to_do* The (HTML) contents of the "Things To Do & See" section.
 
-        def get_park_details(data, logit = false)
-          res = get(data[:uri], {
+        def get_park_details(lpd, logit = false)
+          res = get(lpd[:uri], {
                       headers: {
                         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
                       }
                     })
           if res.is_a?(Net::HTTPOK)
             doc = Nokogiri::HTML(res.body)
-            details = extract_park_details(doc, data)
+            details = extract_park_details(doc, lpd)
 
             if logit
-              self.logger.info { "extracted park data for (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
+              self.logger.info { "extracted park data for (#{lpd[:region]}) (#{lpd[:area]}) (#{lpd[:name]})" }
             end
 
             details
           else
-            self.logger.warn { "failed to extract park data for (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
+            self.logger.warn { "failed to extract park data for (#{lpd[:region]}) (#{lpd[:area]}) (#{lpd[:name]})" }
             { }
           end
         end
@@ -232,7 +238,7 @@ module Cf
         # follows:
         # 1. Call {#get_park_list} to build the park list.
         # 2. For each park, call {#get_park_details} and merge the result value into the park data.
-        #    - *:location* and *:types* go in the park data
+        #    - *:location*, *:reservation_uri*, and *:types* go in the park data.
         #    - *:facilities* and *:activities* go in the *:additional_info* entry.
         #
         # @param [Array<Hash>] parks An array of park data, typically as returned by {#get_park_list}.
@@ -252,7 +258,7 @@ module Cf
 
           parks.each do |p|
             details = get_park_details(p, logit)
-            [ :location, :types ].each do |k|
+            [ :location, :types, :reservation_uri ].each do |k|
               p[k] = details[k] if details.has_key?(k)
             end
 
@@ -328,6 +334,9 @@ module Cf
             end
           end
 
+          reservation_url = extract_reservation_url(navmenu, ldata)
+          rv[:reservation_uri] = reservation_url unless reservation_url.nil?
+
           facilities = extract_facilities(navmenu, ldata)
           if facilities.nil?
             self.logger.warn { "no facilities found in (#{ldata[:region]}) (#{ldata[:area]}) (#{ldata[:name]})" }
@@ -386,6 +395,15 @@ module Cf
             end
           end
 
+          # If there is reservation URL, and there are types listed, let's see if the park supports RVs. 
+          # Unfortunately there does not seem to be a way to gather thatother than by reading the facilites
+          # descriptions. However, with the reservation URl we can try hitting reserveamerica and ask for
+          # RV sites
+
+          if (types.count > 0) && !reservation_url.nil?
+            types << Cf::Scrubber::Base::TYPE_RV if has_rv_sites?(reservation_url)
+          end
+
           rv[:types] = types
 
           rv
@@ -404,7 +422,9 @@ module Cf
             sn = n.css('span span').first
             if sn
               txt = sn.text().strip
-              ll.each { |l| return adjust_href(n['href'], ROOT_URL) if txt == l }
+              ll.each do |l|
+                return adjust_href(n['href'], cpd[:uri]) if txt == l
+              end
             end
           end
 
@@ -485,6 +505,71 @@ module Cf
 
         def extract_activities(navmenu, cpd, label = ACTIVITIES_MENU)
           extract_details(label, ACTIVITIES, navmenu, cpd)
+        end
+
+        def extract_reservation_url(navmenu, cpd)
+          url = find_menu_item(navmenu, CAMPING_MENU, cpd)
+          if url
+            doc = get_park_page(url)
+            if doc
+              doc.css('#cpw_zone-sidebar2 a').each do |na|
+                # we rely on the fact that the park system uses reserveamerica for their reservations
+                if na['href'] =~ /reserveamerica/
+                  # we accept a reservation URL only if it contains a query string (which we assume contains
+                  # the contractCode and parkId)
+
+                  ruri = URI.parse(na['href'])
+                  return na['href'] unless ruri.query.nil?
+                end
+              end
+            end
+          end
+
+          nil
+        end
+
+        RESERVEAMERICA_CAMPSITE_SEARCH_PATH = '/campsiteSearch.do'
+
+        def has_rv_sites?(reservation_url)
+          puri = URI.parse(reservation_url)
+          surl = "https://#{puri.host}#{RESERVEAMERICA_CAMPSITE_SEARCH_PATH}?#{puri.query}"
+
+          # 2001 is the code for RV sites
+          # parkId and contractCode should come from the reservation URL
+
+          params = {
+            siteType: 2001,
+            loop: nil,
+            csite: nil,
+            eqplen: nil,
+            maxpeople: nil,
+            hookup: nil,
+            range: 1,
+            arvdate: nil,
+            enddate: nil,
+            lengthOfStay: nil,
+            siteTypeFilter: 'ALL',
+            submitSiteForm: true,
+            search: 'site',
+            currentMaximumWindow: 12
+          }
+
+          puri.query.split('&') do |q|
+            qk, qv = q.split('=')
+            params[qk.to_sym] = qv
+          end
+
+          res = post(surl, params, {
+                       headers: {
+                         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                       }
+                     })
+          if res.is_a?(Net::HTTPOK)
+            doc = Nokogiri::HTML(res.body)
+            return (doc.css('#csiterst table#shoppingitems').first.nil?) ? false : true
+          end
+
+          false
         end
       end
     end
