@@ -189,7 +189,7 @@ module Cf
           end
 
           if res.is_a?(Net::HTTPRedirection)
-            uri = URI(res['Location'])
+            uri = redirect_uri(URI(res['Location']), res)
             max_redirects -= 1
           else
             max_redirects = 0
@@ -227,10 +227,10 @@ module Cf
         # do the same.
 
         res = nil
-        max_redirects = opts.has_key?(:max_redirects) ? opts[:max_redirects] : 1
+        max_redirects = opts.has_key?(:max_redirects) ? opts[:max_redirects] : 4
         uri = URI(url)
         while max_redirects > 0 do
-          self.logger.debug { "GET (#{max_redirects}): " + uri.to_s }
+          self.logger.debug { "POST (#{max_redirects}): " + uri.to_s }
           req = Net::HTTP::Post.new(uri)
           headers.each { |hk, hv| req[hk] = hv }
           req.set_form_data(form_data)
@@ -240,7 +240,7 @@ module Cf
           end
 
           if res.is_a?(Net::HTTPRedirection)
-            uri = URI(res['Location'])
+            uri = redirect_uri(URI(res['Location']), res)
             max_redirects -= 1
           else
             max_redirects = 0
@@ -266,38 +266,56 @@ module Cf
       end
 
       # Convert a relative URL to a full one, filtering out query parameters as instructed.
+      # The method parses _href_ and generates a new URL using the components of _base_ if not present
+      # in _href_. The +path+ component is treated differently: if it starts with a '/', the path in
+      # _href_ is used as is. Otherwise, the path in _href_ is appended to the path in _base_.
+      # Finally, the parameters in _qf_ are dropped from the query string.
       #
-      # @param [String] href A string containing a URl, which is possibly relative.
+      # @param [String] href A string containing a URL, which is possibly relative.
       # @param [String,URI::Generic] base The URI object containing the parsed representation of
       #  the base URL, or a string containing the base URL.
       # @param [Array<String>] qf An array containing the names of query string parameters to be
       #  dropped from the query string.
       #
-      # @return [String] Returns a string containing the adjusted URL:
-      #  - Relative URLs are converted to absolute, using the _base_ values.
-      #  - Parameters listed in _qf_ are dropped from the query string.
+      # @return [String] Returns a string containing the adjusted URL, as described above.
 
       def self.adjust_href(href, base, qf = [ ])
         base_uri = (base.is_a?(String)) ? URI(base) : base
         h_uri = URI(href)
 
-        if href[0] == '/'
-          uri = base_uri.dup
-          uri.path = h_uri.path
-          uri.fragment = h_uri.fragment
-          uri.query = h_uri.query
+        scheme = (h_uri.scheme.nil?) ? base_uri.scheme : h_uri.scheme
+        params = {
+          host: (h_uri.host.nil?) ? base_uri.host : h_uri.host,
+          fragment: (h_uri.fragment.nil?) ? base_uri.fragment : h_uri.fragment
+        }
+
+        if h_uri.path
+          if h_uri.path[0] == '/'
+            params[:path] = h_uri.path
+          else
+            params[:path] = base_uri.path + '/' + h_uri.path
+          end
         else
-          uri = h_uri
+          params[:path] = base_uri.path
         end
 
-        if (qf.count > 0) && !uri.query.nil?
-          qa = uri.query.split('&').select do |e|
+        query = (h_uri.query.nil?) ? base_uri.query : h_uri.query
+        if !query.nil? && (qf.count > 0)
+          qa = query.split('&').select do |e|
             !qf.include?(e.split('=')[0])
           end
-          uri.query = qa.join('&')
+          params[:query] = qa.join('&')
         end
 
-        uri.to_s
+        case scheme.downcase
+        when 'http'
+          URI::HTTP.build(params)
+        when 'https'
+          URI::HTTPS.build(params)
+        else
+          params[:scheme] = scheme
+          URI::Generic.build(params)
+        end
       end
 
       protected
@@ -311,6 +329,20 @@ module Cf
 
       def merge_headers(headers)
         DEFAULT_HEADERS.merge(headers)
+      end
+
+      private
+
+      def redirect_uri(uri, res)
+        if uri.scheme.nil? || uri.host.nil?
+          t = res.uri.dup
+          t.path = uri.path
+          t.query = uri.query
+          t.fragment = uri.fragment
+          uri = t
+        end
+
+        uri
       end
     end
   end
