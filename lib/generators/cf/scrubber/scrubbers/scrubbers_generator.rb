@@ -6,7 +6,8 @@ module Cf::Scrubber
                   'ga_parks_activities', 'ga_parks_list',
                   'nv_parks_activities', 'nv_parks_list',
                   'or_parks_list',
-                  'usda_nfs_campgrounds', 'usda_nfs_forests', 'usda_nfs_states' ]
+                  'usda_nfs_campgrounds', 'usda_nfs_forests', 'usda_nfs_states',
+                  'ut_parks_list' ]
 
     desc <<-DESC
   This generator installs scrubber utilities into the scrubbers folder.

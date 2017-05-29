@@ -1,0 +1,39 @@
+UT state parks store geographic coordinates using Mercator (3857) so that they can be displayed on a map.
+
+We can save them as such, and then convert them to lat/lon (4326) at load time, where we have access to PostGIS
+and can run the conversion query show below.
+
+ST_GeographyFromText('SRID=3857;POINT(-12495099.247068636 5016311.256232564)')
+ST_GeometryFromText('SRID=3857;POINT(-12495099.247068636 5016311.256232564)')
+
+ST_GeomFromEWKT('SRID=3857;POINT(-12495099.247068636 5016311.256232564)')
+
+conversion query:
+
+select ST_AsText(ST_Transform(ST_GeomFromEWKT('SRID=3857;POINT(-12495099.247068636 5016311.256232564)'), 4326));
+
+-112.245386302321 41.0269070377663
+
+41.0269070377663 -112.245386302321
+
+Antelope Island park office:
+
+x: -12494054.146538993, y: 5017391.683094982
+
+select ST_AsText(ST_Transform(ST_GeomFromEWKT('SRID=3857;POINT(-12494054.146538993 5017391.683094982)'), 4326));
+ POINT(-112.235998004529 41.0342285788259)
+ 41.0342285788259 -112.235998004529
+
+select ST_AsText(ST_Transform(ST_GeomFromEWKT('SRID=3857;POINT(-12438280.281168038 4900462.519531042)'), 4326));
+ POINT(-111.734972847357 40.2371374236297)
+40.2371374236297 -111.734972847357
+
+But note that a park's Directions page typically includes GPS coordinates. Actually typically it does NOT.
+
+SELECT ST_AsText(ST_Transform(ST_GeomFromEWKT('SRID=3857;POINT(-12491275.843107589 4973156.300141904)'), 4326)) AS geom;
+                 st_astext                 
+-------------------------------------------
+ POINT(-112.211040080165 40.7338009462962)
+(1 row)
+40.7338009462962 -112.211040080165
+
