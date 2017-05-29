@@ -2,10 +2,9 @@ require 'net/http'
 require 'json'
 require 'nokogiri'
 require 'logger'
+require 'cf/scrubber/logged_api'
 
 module Cf
-  # The namespace module for scrubbers.
-
   module Scrubber
     # The base class for scrubbers.
     #
@@ -24,7 +23,10 @@ module Cf
     # - *:area* A subset of *:region*. For example, the National Forest Service stores the name of the
     #   national forest (or grassland) where the campground is located; California state parks store the
     #   name of the district where the campground is located; Oregon and Nevada leave it blank.
-    # - *:location* The geographic coordinates of the campground: *:lat*, *:lon*, and *:elevation*.
+    # - *:location* The geographic coordinates of the campground. The value is either a hash containing
+    #   the keys *:lat*, *:lon*, and *:elevation*, or a string representation of the coordinates.
+    #   The string representation should be in PostGIS EWKT format, for example for coordinates in a
+    #   Mercator projection system: <code>SRID=3857;POINT(-12495099.247068636 5016311.2562325643)</code>.
     # - *:types* An array listing the types of campsites in the campground. See {CAMPSITE_TYPES}.
     # - *:reservation_uri* The URL to the reservation page for the campground.
     # - *:blurb* A short description of the campground.
@@ -32,6 +34,8 @@ module Cf
     #   The constant {ADDITIONAL_INFO_KEYS} lists standard keys; scrubber subclasses can add their own.
 
     class Base
+      include Cf::Scrubber::LoggedAPI
+
       # Standard campsite: tent accomodations.
 
       TYPE_STANDARD = :standard
@@ -51,13 +55,6 @@ module Cf
       # The standard campsite names.
 
       CAMPSITE_TYPES = [ TYPE_STANDARD, TYPE_GROUP, TYPE_CABIN, TYPE_RV ]
-
-      # The default values for request headers.
-
-      DEFAULT_HEADERS = {
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.8'
-      }
 
       # The standard set of keys for the additional info hash in scrubbed data.
       # Subclasses may define other keys.
@@ -117,26 +114,7 @@ module Cf
           @output = STDOUT
         end
 
-        if opts.has_key?(:logger)
-          if opts[:logger].is_a?(Logger)
-            @logger = opts[:logger]
-          else
-            @logger = Logger.new(nil)
-          end
-        else
-          @logger = Logger.new(STDERR)
-        end
-
-        @logger.level = if opts.has_key?(:logger_level)
-                          lvl = opts[:logger_level]
-                          if lvl.is_a?(String)
-                            lvl.split('::').inject(Object) { |o,c| o.const_get c }
-                          else
-                            lvl
-                          end
-                        else
-                          Logger::INFO
-                        end
+        initialize_logger(opts)
       end
 
       # @!attribute [r] root_url
@@ -144,111 +122,10 @@ module Cf
       # @return [String] the root URL, as a string.
       attr_reader :root_url
 
-      # @!attribute [rw] logger
-      # The logger associated with the scrubber.
-      # @return [Object] the current logger.
-      attr_accessor :logger
-
       # @!attribute [rw] outpput
       # The output stream to use.
       # @return [IO] the current output stream.
       attr_accessor :output
-
-      # Get a page.
-      #
-      # @param url [String] The URL to the page.
-      # @param opts [Hash] A set of options for the method.
-      # @option opts [Hash] :headers A hash of request headers. The +Accept+ header is set to accept
-      #  HTML if not present. The +Accept-Language+ is set to accept English if not present.
-      #  The keys *must* be strings; do not use symbols.
-      # @option opts [Array<String>] :cookies An array of cookie string representations that will be sent
-      #  in the +Cookie+ request header. This value overrides any values in +Cookie+ from the :headers
-      #  options.
-      # @option opts [Integer] :max_redirects The maximum number of redirects to follow. Defaults to 4.
-      #  To turn off following of redirects, set this value to 1.
-      #
-      # @return [Net::HTTPResponse] Returns a response object.
-
-      def get(url, opts = {})
-        headers = merge_headers(opts.has_key?(:headers) ? opts[:headers] : {})
-
-        if opts.has_key?(:cookies)
-          headers['Cookie'] = opts[:cookies].join('; ')
-        end
-
-        res = nil
-        max_redirects = opts.has_key?(:max_redirects) ? opts[:max_redirects] : 4
-        uri = URI(url)
-        while max_redirects > 0 do
-          self.logger.debug { "GET (#{max_redirects}): " + uri.to_s }
-          req = Net::HTTP::Get.new(uri)
-          headers.each { |hk, hv| req[hk] = hv }
-
-          res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
-            http.request(req)
-          end
-
-          if res.is_a?(Net::HTTPRedirection)
-            uri = redirect_uri(URI(res['Location']), res)
-            max_redirects -= 1
-          else
-            max_redirects = 0
-          end
-        end
-
-        res
-      end
-
-      # Post a request.
-      #
-      # @param url [String] The URL to which to post.
-      # @param form_data [Hash] The request parameters.
-      # @param opts [Hash] A set of options for the method.
-      # @option opts [Hash] :headers A hash of request headers. The +Accept+ header is set to accept
-      #  HTML if not present. The keys *must* be strings; do not use symbols.
-      # @option opts [Array<String>] :cookies An array of cookie string representations that will be sent
-      #  in the +Cookie+ request header. This value overrides any values in +Cookie+ from the :headers
-      #  options.
-      # @option opts [Integer] :max_redirects The maximum number of redirects to follow. Defaults to 1,
-      #  which turns off following of redirects.
-      #  Note that the default is different than for {Cf::Scrubber::Base::get}: a POST by default returns
-      #  the redirection response, whereas a GET follows it.
-      #
-      # @return [Net::HTTPResponse] Returns a response object.
-
-      def post(url, form_data = {}, opts = {})
-        headers = merge_headers(opts.has_key?(:headers) ? opts[:headers] : {})
-
-        if opts.has_key?(:cookies)
-          headers['Cookie'] = opts[:cookies].join('; ')
-        end
-
-        # We have to think about this. Browsers seem to do a GET on a redirect, so maybe we should
-        # do the same.
-
-        res = nil
-        max_redirects = opts.has_key?(:max_redirects) ? opts[:max_redirects] : 4
-        uri = URI(url)
-        while max_redirects > 0 do
-          self.logger.debug { "POST (#{max_redirects}): " + uri.to_s }
-          req = Net::HTTP::Post.new(uri)
-          headers.each { |hk, hv| req[hk] = hv }
-          req.set_form_data(form_data)
-
-          res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
-            http.request(req)
-          end
-
-          if res.is_a?(Net::HTTPRedirection)
-            uri = redirect_uri(URI(res['Location']), res)
-            max_redirects -= 1
-          else
-            max_redirects = 0
-          end
-        end
-
-        res
-      end
 
       # Convert a relative URL to a full one, filtering out query parameters as instructed.
       # Calls the class method {.adjust_href}.
@@ -271,78 +148,60 @@ module Cf
       # _href_ is used as is. Otherwise, the path in _href_ is appended to the path in _base_.
       # Finally, the parameters in _qf_ are dropped from the query string.
       #
-      # @param [String] href A string containing a URL, which is possibly relative.
+      # @param [String, nil] href A string containing a URL, which is possibly relative. If +nil+ or an
+      #  empty string, the method returns the URL for _base_.
       # @param [String,URI::Generic] base The URI object containing the parsed representation of
       #  the base URL, or a string containing the base URL.
       # @param [Array<String>] qf An array containing the names of query string parameters to be
       #  dropped from the query string.
       #
-      # @return [String] Returns a string containing the adjusted URL, as described above.
+      # @return [URI::Generic] Returns a URI instance containing the adjusted URL, as described above.
 
       def self.adjust_href(href, base, qf = [ ])
         base_uri = (base.is_a?(String)) ? URI(base) : base
-        h_uri = URI(href)
+        if href.nil? || (href.length < 1)
+          base_uri
+        else
+          h_uri = URI(href)
 
-        scheme = (h_uri.scheme.nil?) ? base_uri.scheme : h_uri.scheme
-        params = {
-          host: (h_uri.host.nil?) ? base_uri.host : h_uri.host,
-          fragment: (h_uri.fragment.nil?) ? base_uri.fragment : h_uri.fragment
-        }
+          scheme = (h_uri.scheme.nil?) ? base_uri.scheme : h_uri.scheme
+          params = {
+            host: (h_uri.host.nil?) ? base_uri.host : h_uri.host,
+            fragment: (h_uri.fragment.nil?) ? base_uri.fragment : h_uri.fragment
+          }
 
-        if h_uri.path
-          if h_uri.path[0] == '/'
-            params[:path] = h_uri.path
+          if h_uri.path
+            if h_uri.path[0] == '/'
+              params[:path] = h_uri.path
+            else
+              params[:path] = base_uri.path + '/' + h_uri.path
+            end
           else
-            params[:path] = base_uri.path + '/' + h_uri.path
+            params[:path] = base_uri.path
           end
-        else
-          params[:path] = base_uri.path
-        end
 
-        query = (h_uri.query.nil?) ? base_uri.query : h_uri.query
-        if !query.nil? && (qf.count > 0)
-          qa = query.split('&').select do |e|
-            !qf.include?(e.split('=')[0])
+          query = (h_uri.query.nil?) ? base_uri.query : h_uri.query
+          if !query.nil?
+            if qf.count > 0
+              qa = query.split('&').select do |e|
+                !qf.include?(e.split('=')[0])
+              end
+              params[:query] = qa.join('&')
+            else
+              params[:query] = query
+            end
           end
-          params[:query] = qa.join('&')
+
+          case scheme.downcase
+          when 'http'
+            URI::HTTP.build(params)
+          when 'https'
+            URI::HTTPS.build(params)
+          else
+            params[:scheme] = scheme
+            URI::Generic.build(params)
+          end
         end
-
-        case scheme.downcase
-        when 'http'
-          URI::HTTP.build(params)
-        when 'https'
-          URI::HTTPS.build(params)
-        else
-          params[:scheme] = scheme
-          URI::Generic.build(params)
-        end
-      end
-
-      protected
-
-      # Build request headers from defaults an local values.
-      # This method merges the default header values into _headers_ and returns a new hash.
-      #
-      # @param headers [Hash] The local header values (to be used in a request).
-      #
-      # @return [Hash] Returns a hash where the values in _headers_ have been merged with a set of defaults.
-
-      def merge_headers(headers)
-        DEFAULT_HEADERS.merge(headers)
-      end
-
-      private
-
-      def redirect_uri(uri, res)
-        if uri.scheme.nil? || uri.host.nil?
-          t = res.uri.dup
-          t.path = uri.path
-          t.query = uri.query
-          t.fragment = uri.fragment
-          uri = t
-        end
-
-        uri
       end
     end
   end

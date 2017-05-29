@@ -7,21 +7,27 @@ class BaseTest < Minitest::Test
     base_uri = URI(base)
 
     href = 'http://www.t.com/f/g?p4=40&p5=50'
-    assert_equal href, Cf::Scrubber::Base.adjust_href(href, base)
-    assert_equal href, Cf::Scrubber::Base.adjust_href(href, base_uri)
-    assert_equal 'http://www.t.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base, [ 'p4' ])
-    assert_equal 'http://www.t.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base_uri, [ 'p4' ])
+    assert_equal href, Cf::Scrubber::Base.adjust_href(href, base).to_s
+    assert_equal href, Cf::Scrubber::Base.adjust_href(href, base_uri).to_s
+    assert_equal 'http://www.t.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base, [ 'p4' ]).to_s
+    assert_equal 'http://www.t.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base_uri, [ 'p4' ]).to_s
 
     href = '/f/g?p4=40&p5=50'
-    assert_equal 'http://www.s.com/f/g?p4=40&p5=50', Cf::Scrubber::Base.adjust_href(href, base)
-    assert_equal 'http://www.s.com/f/g?p4=40&p5=50', Cf::Scrubber::Base.adjust_href(href, base_uri)
-    assert_equal 'http://www.s.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base, [ 'p4' ])
-    assert_equal 'http://www.s.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base_uri, [ 'p4' ])
+    assert_equal 'http://www.s.com/f/g?p4=40&p5=50', Cf::Scrubber::Base.adjust_href(href, base).to_s
+    assert_equal 'http://www.s.com/f/g?p4=40&p5=50', Cf::Scrubber::Base.adjust_href(href, base_uri).to_s
+    assert_equal 'http://www.s.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base, [ 'p4' ]).to_s
+    assert_equal 'http://www.s.com/f/g?p5=50', Cf::Scrubber::Base.adjust_href(href, base_uri, [ 'p4' ]).to_s
 
     href = '/f/g?p4=40&p5=50&p6=60#frag'
-    assert_equal 'http://www.s.com/f/g?p4=40&p5=50&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base)
-    assert_equal 'http://www.s.com/f/g?p4=40&p5=50&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base_uri)
-    assert_equal 'http://www.s.com/f/g?p4=40&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base, [ 'p5' ])
-    assert_equal 'http://www.s.com/f/g?p4=40&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base_uri, [ 'p5' ])
+    assert_equal 'http://www.s.com/f/g?p4=40&p5=50&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base).to_s
+    assert_equal 'http://www.s.com/f/g?p4=40&p5=50&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base_uri).to_s
+    assert_equal 'http://www.s.com/f/g?p4=40&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base, [ 'p5' ]).to_s
+    assert_equal 'http://www.s.com/f/g?p4=40&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base_uri, [ 'p5' ]).to_s
+
+    href = 'd/e?p4=40&p5=50&p6=60#frag'
+    assert_equal 'http://www.s.com/a/b/c/d/e?p4=40&p5=50&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base).to_s
+    assert_equal 'http://www.s.com/a/b/c/d/e?p4=40&p5=50&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base_uri).to_s
+    assert_equal 'http://www.s.com/a/b/c/d/e?p4=40&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base, [ 'p5' ]).to_s
+    assert_equal 'http://www.s.com/a/b/c/d/e?p4=40&p6=60#frag', Cf::Scrubber::Base.adjust_href(href, base_uri, [ 'p5' ]).to_s
   end
 end
