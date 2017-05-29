@@ -6,6 +6,7 @@ require 'json'
 require 'logger'
 
 require 'cf/scrubber/base'
+require 'cf/scrubber/reserve_america'
 
 module Cf
   module Scrubber
@@ -528,48 +529,9 @@ module Cf
           nil
         end
 
-        RESERVEAMERICA_CAMPSITE_SEARCH_PATH = '/campsiteSearch.do'
-
         def has_rv_sites?(reservation_url)
-          puri = URI.parse(reservation_url)
-          surl = "https://#{puri.host}#{RESERVEAMERICA_CAMPSITE_SEARCH_PATH}?#{puri.query}"
-
-          # 2001 is the code for RV sites
-          # parkId and contractCode should come from the reservation URL
-
-          params = {
-            siteType: 2001,
-            loop: nil,
-            csite: nil,
-            eqplen: nil,
-            maxpeople: nil,
-            hookup: nil,
-            range: 1,
-            arvdate: nil,
-            enddate: nil,
-            lengthOfStay: nil,
-            siteTypeFilter: 'ALL',
-            submitSiteForm: true,
-            search: 'site',
-            currentMaximumWindow: 12
-          }
-
-          puri.query.split('&') do |q|
-            qk, qv = q.split('=')
-            params[qk.to_sym] = qv
-          end
-
-          res = post(surl, params, {
-                       headers: {
-                         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-                       }
-                     })
-          if res.is_a?(Net::HTTPOK)
-            doc = Nokogiri::HTML(res.body)
-            return (doc.css('#csiterst table#shoppingitems').first.nil?) ? false : true
-          end
-
-          false
+          ra = Cf::Scrubber::ReserveAmerica.new(reservation_url, { logger: self.logger })
+          ra.has_rv_sites?()
         end
       end
     end
