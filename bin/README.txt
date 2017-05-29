@@ -75,6 +75,18 @@ Oregon State Parks System:
     -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
     -?                               Show help
 
+Utah State Park System:
+
+- ut_parks_list
+  List UT state parks
+    -A, --all                        If present, all parks are listed; otherwise only those with campgrounds are listed.
+    -t, --types=TYPES                Comma-separated list of types of campground to list. Lists all types if not given.
+    -D, --data-format=DATAFORMAT     The output format to use: raw, json, or name.
+    -o, --output-file=FILE           The file to use for the output. If not present, use STDOUT
+    -l, --log-file=FILE              The file to use for the logger. If not present, use STDERR
+    -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
+    -?                               Show help
+
 National Forest Service (USDA):
 
 - usda_nfs_campgrounds [options]
