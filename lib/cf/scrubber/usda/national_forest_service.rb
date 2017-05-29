@@ -697,6 +697,8 @@ module Cf
         # @return [Net::HTTPResponse] Returns a response object containing the camping subpage for the forest.
 
         def get_forest_camping_subpage(state_id, forest_id, subpage_name)
+          self.logger.debug { "get_forest_camping_subpage (#{state_id}) (#{forest_id}) (#{subpage_name})" }
+
           s_res = nil
           c_res = get_forest_camping_page(state_id, forest_id)
           if c_res.is_a?(Net::HTTPOK)
@@ -1030,11 +1032,15 @@ module Cf
         end
 
         def get_forest_center_menu_node(res, doc, node_label, qf = [ ])
+          self.logger.debug { "get_forest_center_menu_node (#{node_label}) (#{res.uri})" }
           root_element = doc.css("div#centercol > table > tr")[1]
-          home_element = root_element.css("ul")
-          home_element.css('li > a > strong').each do |n|
+          self.logger.debug { "get_forest_center_menu_node root: #{root_element}" }
+          root_element.css('ul li > a > strong').each do |n|
+            self.logger.debug { "get_forest_center_menu_node li_a_strong: #{n}" }
             t = n.text()
             if t == node_label
+              self.logger.debug { "get_forest_center_menu_node href: #{n.parent['href']}" }
+              self.logger.debug { "get_forest_center_menu_node adjusted: #{adjust_href(n.parent['href'], res.uri, qf)}" }
               return [ n.parent.parent, adjust_href(n.parent['href'], res.uri, qf) ]
             end
           end
