@@ -415,9 +415,12 @@ module Cf
             add[ak] = a.join(', ') if a.count > 0
           end
 
+          name = extract_park_name(nf)
+
           cpd = {
+            signature: "state/nevada/#{name.downcase}/#{name.downcase}",
             organization: ORGANIZATION_NAME,
-            name: extract_park_name(nf),
+            name: name,
             uri: park_uri,
             types: make_types(fl),
             region: REGION_NAME,

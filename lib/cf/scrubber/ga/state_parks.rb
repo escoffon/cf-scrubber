@@ -87,6 +87,7 @@ module Cf
         #  (data that can be extracted from the park index page).
         #  Returns +nil+ if it can't find it in the page.
         #  The local park data contain the following standard key/value pairs:
+        #  - *:signature* The park signature.
         #  - *:organization* Is +ga:parks+.
         #  - *:name* The campground name.
         #  - *:uri* The URL to the campground's details page.
@@ -268,9 +269,12 @@ module Cf
         end
 
         def extract_local_park_data(nc, res)
+          name = extract_park_name(nc)
+
           cpd = {
+            signature: "state/georgia/#{name.downcase}/#{name.downcase}",
             organization: ORGANIZATION_NAME,
-            name: extract_park_name(nc),
+            name: name,
             uri: extract_park_url(nc),
             types: extract_camp_types(nc),
             region: REGION_NAME,

@@ -11,6 +11,13 @@ module Cf
     # Scrubbers are expected to generate campground data in a common format: a hash containing a number
     # of standard keys. Each scrubber can also add scrubber-specific keys.
     # The common set of keys is:
+    # - *:signature* The signature is a string value associated with the campground and constructed in such
+    #   a way that it is unique across all campgrounds in the database (in theory at least...).
+    #   The various scrubbers generate the signature based on the campground properties, but typically it
+    #   consists of a concatenation of: a tag to identify the organization type; a string value containing
+    #   the name of the "rec area" where the campground is located; the campground name; and an additional
+    #   identifer to disambiguate campgrounds with the same name and in the same area (of which there are
+    #   a few in the National Forest Service suystem).
     # - *:organization* The name of the organization that controls this campground; for example, for
     #   the National Forest Service it is +usda:nfs+, and for the California State Park system it
     #   is +ca:state+.

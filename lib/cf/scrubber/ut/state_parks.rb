@@ -80,6 +80,7 @@ module Cf
         #  (data that can be extracted from the park main page).
         #  Returns +nil+ if it can't find it in the page.
         #  The minimal park data contain the following standard key/value pairs:
+        #  - *:signature* The park signature.
         #  - *:organization* Is +ut:parks+.
         #  - *:name* The park name.
         #  - *:uri* The URL to the park's details page.
@@ -403,11 +404,6 @@ module Cf
           nil
         end
 
-
-
-
-
-
         # Given a list of parks, load their :types property.
         # This method builds a list of parks that support various accommodation types, and from that
         # builds the :types attribute for each park in the list.
@@ -661,9 +657,11 @@ module Cf
           parks_submenu = get_main_menu_item_submenu(get_menu_item(main_menubar, 'parks'))
           if parks_submenu
             parks_submenu.css("> li.menu-item > a").each do |pn|
+              name = pn.text().strip
               plist << {
+                signature: "state/utah/#{name.downcase}/#{name.downcase}",
                 organization: ORGANIZATION_NAME,
-                name: pn.text().strip,
+                name: name,
                 uri: normalize_uri(pn['href']).to_s,
                 region: REGION_NAME,
                 area: ''

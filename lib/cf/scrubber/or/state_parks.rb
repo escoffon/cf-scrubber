@@ -282,9 +282,12 @@ module Cf
             end
           end
 
+          name = ple['park_name']
+
           cpd = {
+            signature: "state/oregon/#{name.downcase}/#{name.downcase}",
             organization: ORGANIZATION_NAME,
-            name: ple['park_name'],
+            name: name,
             uri: park_details_url(ple['park_id']),
             region: REGION_NAME,
             area: '',

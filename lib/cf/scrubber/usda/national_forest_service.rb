@@ -726,6 +726,7 @@ module Cf
         #
         # @return [Array<Hash>] Returns an array of hashes containing the list of campgrounds.
         #  The hashes contain the following standard key/value pairs:
+        #  - *:signature* The park signature.
         #  - *:organization* Is +usda:nfs+.
         #  - *:name* The campground name.
         #  - *:uri* The URL to the campground's details page.
@@ -1064,6 +1065,21 @@ module Cf
           urls
         end
 
+        def add_signature(c)
+          recid = nil
+          c[:uri].query.split('&').each do |q|
+            k, v = q.split('=')
+            if k == 'recid'
+              recid = v
+              break
+            end
+          end
+
+          unless recid.nil?
+            c[:signature] = "usfs/#{c[:area].downcase}/#{c[:name].downcase}/#{recid}"
+          end
+        end
+
         def scan_camping_subpage(url, type, state_name, state_id, forest_name, forest_id, with_details)
           page_name = CAMPGROUND_TYPES[type]
           res = get(url)
@@ -1101,6 +1117,7 @@ module Cf
                   c.merge!(boilerplate)
                   c.merge!(get_campground_details(c)) if with_details
                   c[:types] = [ type ]
+                  add_signature(c)
 
                   @campgrounds << n.uri
                   @campgrounds_map[n.uri] = c

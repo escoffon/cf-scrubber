@@ -205,6 +205,7 @@ module Cf
         # @param [Boolean] logit Set to +true+ to log an info line that the park data were fetched.
         #
         # @return [Hash] Returns a hash containing park data that was extracted from the park detail page:
+        #  - *:signature* The park signature, based on the *:name* value.
         #  - *:name* A string containing a more complete name for the park.
         #  - *:types* An array listing the types of campsites in the campground; often this will be a one
         #    element array, but some campgrounds have multiple site types.
@@ -302,9 +303,11 @@ module Cf
             doc = Nokogiri::HTML(res.body)
             doc.css("#ParksSelect select#ParkList option").each do |nc|
               if nc['value'] != '/'
+                name = nc.text().strip
                 plist << {
+                  signature: "state/colorado/#{name.downcase}/#{name.downcase}",
                   organization: ORGANIZATION_NAME,
-                  name: nc.text().strip,
+                  name: name,
                   uri: adjust_href(nc['value'], ROOT_URL),
                   region: REGION_NAME,
                   area: ''
@@ -323,6 +326,7 @@ module Cf
           n = doc.css("#cpw_parkpage div.article-left div.article-header div.cpw_pagetitle").first
           if n
             rv[:name] = n.text().strip
+            rv[:signature] = "state/colorado/#{rv[:name].downcase}/#{rv[:name].downcase}"
           else
             # here we could try looking it up in the left sidebar (rootmenu)
           end

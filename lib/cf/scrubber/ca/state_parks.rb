@@ -374,6 +374,7 @@ module Cf
         #
         # @return [Hash] Returns a hash that contains normalized, converted park data.
         #  The hash contains the following standard key/value pairs:
+        #  - *:signature* The park signature.
         #  - *:organization* Is +ca:parks+.
         #  - *:name* The campground name.
         #  - *:uri* The URL to the campground's details page.
@@ -407,10 +408,13 @@ module Cf
             add[ak] = a.join(', ') if a.count > 0
           end
 
+          name = "#{pd['long_name']} #{abbr}"
+
           cpd = {
+            signature: "state/california/#{name.downcase}/#{name.downcase}",
             organization: ORGANIZATION_NAME,
             types: make_types(pd),
-            name: "#{pd['long_name']} #{abbr}",
+            name: name,
             uri: park_uri(pd),
             region: REGION_NAME,
             area: pd['Region'],
