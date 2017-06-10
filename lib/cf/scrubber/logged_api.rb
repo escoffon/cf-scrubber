@@ -164,6 +164,103 @@ module Cf
           res
         end
 
+        # Get a page response headers.
+        #
+        # @param url [String] The URL to the page.
+        # @param opts [Hash] A set of options for the method.
+        # @option opts [Hash] :headers A hash of request headers. The +Accept+ header is set to accept
+        #  HTML if not present. The +Accept-Language+ is set to accept English if not present.
+        #  The keys *must* be strings; do not use symbols.
+        # @option opts [Array<String>] :cookies An array of cookie string representations that will be sent
+        #  in the +Cookie+ request header. This value overrides any values in +Cookie+ from the :headers
+        #  options.
+        # @option opts [Integer] :max_redirects The maximum number of redirects to follow. Defaults to 4.
+        #  To turn off following of redirects, set this value to 1.
+        #
+        # @return [Net::HTTPResponse] Returns a response object.
+
+        def head(url, opts = {})
+          headers = merge_headers(opts.has_key?(:headers) ? opts[:headers] : {})
+
+          if opts.has_key?(:cookies)
+            headers['Cookie'] = opts[:cookies].join('; ')
+          end
+
+          res = nil
+          max_redirects = opts.has_key?(:max_redirects) ? opts[:max_redirects] : 4
+          uri = URI(url)
+          while max_redirects > 0 do
+            self.logger.debug { "HEAD (#{max_redirects}): " + uri.to_s }
+            req = Net::HTTP::Head.new(uri)
+            headers.each { |hk, hv| req[hk] = hv }
+
+            res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+              http.request(req)
+            end
+
+            if res.is_a?(Net::HTTPRedirection)
+              uri = redirect_uri(URI(res['Location']), res)
+              max_redirects -= 1
+            else
+              max_redirects = 0
+
+              if res.is_a?(Net::HTTPNotFound)
+                self.logger.warn { "HEAD request returns Not Found for (#{uri.to_s})" }
+              end
+            end
+          end
+
+          res
+        end
+
+        # Check if a URI exists.
+        # Follows redirections until a 2xx or  an error (4xx or 5xx).
+        # Returns +true+ on a 2xx and +false+ otherwise.
+        # This method is similar to {#head}, except that it does not log a warning if the URL is not found.
+        #
+        # @param url [String] The URL to the page.
+        # @param opts [Hash] A set of options for the method.
+        # @option opts [Hash] :headers A hash of request headers. The +Accept+ header is set to accept
+        #  HTML if not present. The +Accept-Language+ is set to accept English if not present.
+        #  The keys *must* be strings; do not use symbols.
+        # @option opts [Array<String>] :cookies An array of cookie string representations that will be sent
+        #  in the +Cookie+ request header. This value overrides any values in +Cookie+ from the :headers
+        #  options.
+        # @option opts [Integer] :max_redirects The maximum number of redirects to follow. Defaults to 4.
+        #  To turn off following of redirects, set this value to 1.
+        #
+        # @return [Boolean] Returns +true+ if _url_ seems to exist, +false+ otherwise.
+
+        def exists?(url, opts = {})
+          headers = merge_headers(opts.has_key?(:headers) ? opts[:headers] : {})
+
+          if opts.has_key?(:cookies)
+            headers['Cookie'] = opts[:cookies].join('; ')
+          end
+
+          res = nil
+          max_redirects = opts.has_key?(:max_redirects) ? opts[:max_redirects] : 4
+          uri = URI(url)
+          while max_redirects > 0 do
+            self.logger.debug { "HEAD (#{max_redirects}): " + uri.to_s }
+            req = Net::HTTP::Head.new(uri)
+            headers.each { |hk, hv| req[hk] = hv }
+
+            res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+              http.request(req)
+            end
+
+            if res.is_a?(Net::HTTPRedirection)
+              uri = redirect_uri(URI(res['Location']), res)
+              max_redirects -= 1
+            else
+              max_redirects = 0
+            end
+          end
+
+          (res.is_a?(Net::HTTPOK)) ? true : false
+        end
+
         protected
 
         # Build request headers from defaults an local values.
