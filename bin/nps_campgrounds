@@ -1,0 +1,24 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/doi/script/nps'
+
+class PrintCampgrounds < Cf::Scrubber::DOI::Script::NPS::Campgrounds
+  class Parser < Cf::Scrubber::DOI::Script::NPS::Campgrounds::Parser
+    def initialize()
+      rv = super()
+
+      p = self.parser
+      p.banner = "Usage: nps_campgrounds [options]\n\nList campgrounds for one or more states"
+      
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintCampgrounds::Parser.new)
+  end
+end
+
+script = PrintCampgrounds.new()
+script.parser.parse(ARGV)
+script.process_campgrounds

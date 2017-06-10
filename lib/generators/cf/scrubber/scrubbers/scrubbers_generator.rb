@@ -4,8 +4,10 @@ module Cf::Scrubber
     SCRUBBERS = [ 'ca_parks_activities', 'ca_parks_list',
                   'co_parks_list',
                   'ga_parks_activities', 'ga_parks_list',
+                  'nps_campgrounds', 'nps_rec_areas',
                   'nv_parks_activities', 'nv_parks_list',
                   'or_parks_list',
+                  'ridb_activities', 'ridb_organizations',
                   'usda_nfs_campgrounds', 'usda_nfs_forests', 'usda_nfs_states',
                   'ut_parks_list' ]
 
@@ -33,12 +35,8 @@ DESC
         Dir.glob(name) do |fn|
           target = "scrubbers/#{fn}"
           outfile = File.join(destination_root, target)
-          if File.exists?(outfile)
-            say_status('skipped', "scrubber file exists: #{outfile}")
-          else
-            template("#{fn}", outfile)
-            chmod(outfile, 0755, { verbose: true })
-          end
+          template("#{fn}", outfile)
+          chmod(outfile, 0755, { verbose: true })
         end
       end
 

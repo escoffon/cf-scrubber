@@ -1,0 +1,55 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/states_helper'
+require 'cf/scrubber/doi/script/nps'
+
+class PrintRecAreas < Cf::Scrubber::DOI::Script::NPS::RecAreas
+  include Cf::Scrubber::StatesHelper
+
+  class Parser < Cf::Scrubber::DOI::Script::NPS::RecAreas::Parser
+    FORMATS = [ :full, :short ]
+
+    def initialize()
+      rv = super()
+      p = self.parser
+
+      p.banner = "Usage: doi_nps_forests [options]\n\nLists National Park Service rec areas for one or more states"
+
+      p.on_head("-FFORMAT", "--format=FORMAT", "The output format to use for the state name: full or short (two-letter code).") do |f|
+        f = f.to_sym
+        self.options[:format] = f if FORMATS.include?(f)
+      end
+
+      self.options.merge!({ format: :full })
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintRecAreas::Parser.new)
+  end
+
+  def list_rec_areas()
+    cur_state = ''
+
+    self.exec do |nps, s, ra|
+      if cur_state != s
+        if self.parser.options[:format] == :short
+          self.output.printf("%s\n", get_state_code(s))
+        else
+          self.output.printf("%s\n", s)
+        end
+
+        cur_state = s
+      end
+
+      self.output.printf("  %8s - %s\n", ra[:id], ra[:name])
+    end
+  end
+end
+
+script = PrintRecAreas.new()
+script.parser.parse(ARGV)
+script.list_rec_areas
+

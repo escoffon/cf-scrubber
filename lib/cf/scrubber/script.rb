@@ -295,15 +295,15 @@ module Cf
 
           case format
           when :raw
-            self.output.print("#-- Campground #{pd[:uri]}\n")
+            self.output.print("#-- Campground #{pd[:signature]}\n")
             self.output.print("#{pd}\n");
           when :json
-            self.output.print("#-- Campground #{pd[:uri]}\n")
+            self.output.print("#-- Campground #{pd[:signature]}\n")
             self.output.print("#{JSON.generate(pd)}\n")
           when :name
-            self.output.print("#{pd[:name]} -- #{pd[:uri]}\n")
+            self.output.print("#{pd[:name]} -- #{pd[:signature]}\n")
           else
-            self.output.print("#-- Campground #{pd[:uri]}\n")
+            self.output.print("#-- Campground #{pd[:signature]}\n")
             self.output.print("#{pd}\n")
           end
         end
