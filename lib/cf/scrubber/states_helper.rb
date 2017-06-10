@@ -79,10 +79,10 @@ module Cf::Scrubber
     module ClassMethods
       # Get the state code from a state name.
       #
-      # @param [String] name The state name (+Arkansas+, +California+, +American Samoa+, etc...).
+      # @param [String] name The state name (+Arkansas+, +California+, <tt>American Samoa</tt>, etc...).
       #  If a two-letter name is given, the method checks if it is a valid state code and returns it.
       #
-      # @return [String] Returns the two-letter code for the state or territory. If _name_ does not map
+      # @return [String, nil] Returns the two-letter code for the state or territory. If _name_ does not map
       #  to a valid code, returns +nil+.
 
       def get_state_code(name)
@@ -98,7 +98,7 @@ module Cf::Scrubber
       # @param [String, Symbol] code A two-letter string or symbol containing the state code (+AR+, +CA+,
       #  +AS+, etc...).
       #
-      # @return [String] Returns the canonical name for the state or territory. If _name_ does not map
+      # @return [String, nil] Returns the canonical name for the state or territory. If _name_ does not map
       #  to a valid code, returns +nil+.
 
       def get_state_name(code)
