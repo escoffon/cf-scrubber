@@ -13,7 +13,7 @@ class PrintRecAreas < Cf::Scrubber::DOI::Script::NPS::RecAreas
       rv = super()
       p = self.parser
 
-      p.banner = "Usage: doi_nps_forests [options]\n\nLists National Park Service rec areas for one or more states"
+      p.banner = "Usage: nps_rec_areas [options]\n\nLists National Park Service rec areas for one or more states"
 
       p.on_head("-FFORMAT", "--format=FORMAT", "The output format to use for the state name: full or short (two-letter code).") do |f|
         f = f.to_sym

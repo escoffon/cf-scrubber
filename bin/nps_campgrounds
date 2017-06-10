@@ -8,7 +8,7 @@ class PrintCampgrounds < Cf::Scrubber::DOI::Script::NPS::Campgrounds
       rv = super()
 
       p = self.parser
-      p.banner = "Usage: nps_campgrounds [options]\n\nList campgrounds for one or more states"
+      p.banner = "Usage: nps_campgrounds [options]\n\nList campgrounds for one or more states and recreation areas"
       
       rv
     end

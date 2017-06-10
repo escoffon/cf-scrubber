@@ -118,3 +118,50 @@ National Forest Service (USDA):
     -l, --log-file=FILE              The file to use for the logger. If not present, use STDERR
     -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
     -?                               Show help
+
+National Park Service (Department of Interior - DOI):
+
+- nps_campgrounds [options]
+  List campgrounds for one or more states and recreation areas
+List campgrounds for one or more states
+    -s, --states=STATES              Comma-separated list of states for which to list forests. You may use two-character state codes.
+    -a, --rec-areas=REC_AREAS        Comma-separated list of rec areas for which to list campgrounds. Shows all rec areas (per state) if not given.
+    -S, --state-format=STATEFORMAT   The output format to use for the state name: full or short (two-letter code).
+    -t, --types=TYPES                Comma-separated list of types of campground to list. Lists all types if not given.
+    -D, --data-format=DATAFORMAT     The output format to use: raw, json, or name.
+    -o, --output-file=FILE           The file to use for the output. If not present, use STDOUT
+    -l, --log-file=FILE              The file to use for the logger. If not present, use STDERR
+    -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
+    -?                               Show help
+
+- nps_rec_areas [options]
+
+Lists National Park Service rec areas for one or more states
+    -F, --format=FORMAT              The output format to use for the state name: full or short (two-letter code).
+    -s, --states=STATES              Comma-separated list of states for which to list rec areas. You may use two-character state codes.
+    -o, --output-file=FILE           The file to use for the output. If not present, use STDOUT
+    -l, --log-file=FILE              The file to use for the logger. If not present, use STDERR
+    -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
+    -?                               Show help
+
+RIDB (Recreation Information Database):
+
+- ridb_organizations [options]
+
+Lists organizations in the RIDB database
+    -n, --no-flat                    If present, generate a hierarchical organization list.
+    -k, --api-key=APIKEY             The API key to use.
+    -o, --output-file=FILE           The file to use for the output. If not present, use STDOUT
+    -l, --log-file=FILE              The file to use for the logger. If not present, use STDERR
+    -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
+    -?                               Show help
+
+- ridb_activities [options]
+
+Lists activities in the RIDB database
+    -s, --sort=SORT                  The sort key; one of id, name.
+    -k, --api-key=APIKEY             The API key to use.
+    -o, --output-file=FILE           The file to use for the output. If not present, use STDOUT
+    -l, --log-file=FILE              The file to use for the logger. If not present, use STDERR
+    -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
+    -?                               Show help
