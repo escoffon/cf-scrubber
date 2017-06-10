@@ -1,0 +1,56 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/ridb/script'
+
+class Organizations < Cf::Scrubber::RIDB::Script::Organizations
+  class Parser < Cf::Scrubber::RIDB::Script::Organizations::Parser
+    def initialize()
+      rv = super()
+      p = self.parser
+
+      p.banner = "Usage: ridb_organizations [options]\n\nLists organizations in the RIDB database"
+
+#      p.on_head("-FFORMAT", "--format=FORMAT", "The output format to use: full or short (two-letter code).") do |f|
+#        f = f.to_sym
+#        self.options[:format] = f if FORMATS.include?(f)
+#      end
+
+#      self.options.merge!({ format: :full })
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(Parser.new)
+  end
+
+  def list_organizations()
+    @flat = self.parser.options[:flat]
+    @total = 0
+    level = 0
+    self.exec do |api, org|
+      print_organization(org, level)
+    end
+
+    print("-- total: #{@total}\n")
+  end
+
+  def print_organization(org, level)
+    @total += 1
+    if @flat
+      printf("%4d (%4d) : %s\n", org['OrgID'], org['OrgParentID'], org['OrgName'])
+    else
+      printf("%#{level}s%4d : %s\n", '', org[:organization]['OrgID'], org[:organization]['OrgName'])
+      if org.has_key?(:children) && (org[:children].count > 0)
+        org[:children].each do |c|
+          print_organization(c, level+2)
+        end
+      end
+    end
+  end
+end
+
+script = Organizations.new()
+script.parser.parse(ARGV)
+script.list_organizations

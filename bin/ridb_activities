@@ -1,0 +1,34 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/ridb/script'
+
+class Activities < Cf::Scrubber::RIDB::Script::Activities
+  class Parser < Cf::Scrubber::RIDB::Script::Activities::Parser
+    def initialize()
+      rv = super()
+      p = self.parser
+
+      p.banner = "Usage: ridb_activities [options]\n\nLists activities in the RIDB database"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(Parser.new)
+  end
+
+  def list_activities()
+    @total = 0
+    self.exec do |api, org|
+      @total += 1
+      printf("%4d : %s\n", org['ActivityID'], org['ActivityName'])
+    end
+
+    print("-- total: #{@total}\n")
+  end
+end
+
+script = Activities.new()
+script.parser.parse(ARGV)
+script.list_activities
