@@ -487,7 +487,17 @@ module Cf
         end
 
         def extract_park_reservation_uri(doc, res, pd)
-          res_a = doc.css('#ParkinfoTab3 > div > div > a.btn')
+          res_id = nil
+          doc.css('div.tabs ul.nav-tabs li a').each do |na|
+            if na.text.strip.downcase == 'reservations'
+              res_id = na['href']
+              break
+            end
+          end
+
+          return nil unless res_id
+
+          res_a = doc.css("div#{res_id} > div > div > a.btn")
           if res_a.length > 0
             na = res_a[0]
             return na['href']
