@@ -43,19 +43,19 @@ module Cf
     class Base
       include Cf::Scrubber::LoggedAPI
 
-      # Standard campsite: tent accomodations.
+      # Standard campsite: tent accommodations.
 
       TYPE_STANDARD = :standard
 
-      # Group campsite: tent accomodations for groups (multiple tents?).
+      # Group campsite: tent accommodations for groups (multiple tents?).
 
       TYPE_GROUP = :group
 
-      # Cabins, yurts, and other permanent or semipermanent accomodations.
+      # Cabins, yurts, and other permanent or semipermanent accommodations.
 
       TYPE_CABIN = :cabin
 
-      # Accomodations for RVs.
+      # Accommodations for RVs.
 
       TYPE_RV = :rv
 
