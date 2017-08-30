@@ -22,6 +22,7 @@ In addition to the scrubber classses, the gem provides a number of scripts in th
 - +ga_parks_activities+ lists the activity (facilities) codes from the GA state park system page.
 - +ga_parks_list+ lists parks in the GA state park system; you can list all parks, or only the ones
   with camping facilities.
+- +nc_parks_list+ lists parks in the NC state park system that offer camping or overnight facilities.
 - +nv_parks_activities+ lists the activity (facilities) codes from the NV state park system page.
 - +nv_parks_list+ lists parks in the NV state park system; you can list all parks, or only the ones
   with camping facilities.

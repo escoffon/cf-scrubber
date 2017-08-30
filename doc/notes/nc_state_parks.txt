@@ -1,0 +1,117 @@
+North Carolina (NC) state parks have a set of pages that can be used to get lists of parks that offer
+a given feature or activity (or a set of).
+
+These pages have a common format: some decoration, and then three elements that contain:
+1. query parameter settings
+2. query results
+3. pagination controls
+
+They are laid out something like this:
+
+<div class="main-container container">
+  ...
+  <div class="region region-content">
+    <section id="block-system-main" class="block block-system clearfix">...</section>
+    <section id="block-views-camping-search-block" class="block block-views clearfix">
+      <div class="view view-camping-search view-id-camping_search view-display-id-block ...">
+        <div class="view-filters">...</div>
+	<div class="view-content">...</div>
+        <div class="text-center">
+          <ul class="pagination">...</ul>
+        </div>
+      </div>
+    </section>
+  </div>
+  ...
+</div>
+
+The "view-filters" div contains a form with a bunch of checkboxes to set up the query parameters.
+
+The "view-contents" div shows the results. It contains a list of parks that meet the search criteria:
+
+<div class="view-content">
+  <div class="views-row views-row-1 views-row-odd views-row-first">
+    <article id="node-395" class="node node-parks node-teaser clearfix"
+             about="/carolina-beach-state-park" typeof="sioc:Item foaf:Document">
+      <header>
+        <h2><a href="/carolina-beach-state-park">Carolina Beach State Park</a></h2>
+        <span property="dc:title" content="Carolina Beach State Park"
+              class="rdf-meta element-hidden"></span>
+        <span property="sioc:num_replies" content="0" datatype="xsd:integer"
+              class="rdf-meta element-hidden"></span>
+      </header>
+      <div class="field field-name-body field-type-text-with-summary field-label-hidden">
+        <div class="field-items">
+          <div class="field-item even" property="content:encoded">
+            ... blurb about park ...
+          </div>
+        </div>
+      </div>
+      <footer>
+        <ul class="links list-inline">
+          <li class="node-readmore first last">
+            <a href="/carolina-beach-state-park" rel="tag" title="Carolina Beach State Park">
+              Read more<span class="element-invisible"> about Carolina Beach State Park</span>
+            </a>
+          </li>
+        </ul>
+      </footer>
+    </article>
+  </div>
+
+  <div class="views-row views-row-2 views-row-even">
+    <article id="node-269" class="node node-parks node-teaser clearfix"
+             about="/cliffs-of-the-neuse-state-park" typeof="sioc:Item foaf:Document">
+      <header>
+        <h2><a href="/cliffs-of-the-neuse-state-park">Cliffs of the Neuse State Park</a></h2>
+        <span property="dc:title" content="Cliffs of the Neuse State Park"
+              class="rdf-meta element-hidden"></span>
+        <span property="sioc:num_replies" content="0" datatype="xsd:integer"
+              class="rdf-meta element-hidden"></span>
+      </header>
+      <div class="field field-name-body field-type-text-with-summary field-label-hidden">
+        <div class="field-items">
+          <div class="field-item even" property="content:encoded">
+            ... blurb about park ...
+          </div>
+        </div>
+      </div>
+      <footer>
+        <ul class="links list-inline">
+          <li class="node-readmore first last">
+            <a href="/cliffs-of-the-neuse-state-park" rel="tag" title="Cliffs of the Neuse State Park">
+              Read more<span class="element-invisible"> about Cliffs of the Neuse State Park</span>
+            </a>
+          </li>
+        </ul>
+      </footer>
+    </article>
+  </div>
+  ...
+</div>
+
+For each .views-row, we can extract the park name and URL from the <article><header><h2><a> element.
+We could also extract the park intro from <article><div>.
+
+Next, we can look at the pagination info. For example:
+
+<div class="text-center">
+  <ul class="pagination">
+    <li class="active"><span>1</span></li>
+    <li>
+      <a title="Go to page 2" href="/find-an-activity/camping?tid%5B0%5D=22&amp;page=1">2</a>
+    </li>
+    <li>
+      <a title="Go to page 3" href="/find-an-activity/camping?tid%5B0%5D=22&amp;page=2">3</a>
+    </li>
+    <li class="next">
+      <a title="Go to next page" href="/find-an-activity/camping?tid%5B0%5D=22&amp;page=1">next ›</a>
+    </li>
+    <li class="pager-last">
+      <a title="Go to last page" href="/find-an-activity/camping?tid%5B0%5D=22&amp;page=2">last »</a>
+    </li>
+  </ul>
+</div> 
+
+This is for the first page results. We can look for li.next, and if one is present we request the next
+page.
