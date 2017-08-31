@@ -10,6 +10,12 @@ module Cf
     # The namespace for scrubbers for USDA sites.
 
     module Usda
+      # @!visibility verbose
+ 
+      def self.collapse_ws(s)
+        s.split.join(' ')
+      end
+
       # A node in the campground tree from the scrubbed camping page.
 
       class CampNode
@@ -20,6 +26,13 @@ module Cf
 
         # @!visibility private
         ROOT_LEVEL = -25
+
+        # @!attribute [r]
+        # The node's label.
+        #
+        # @return [String] the node's label.
+
+        attr_reader :label
 
         # @!attribute [r]
         # The node's URI.
@@ -55,7 +68,8 @@ module Cf
         # @param uri [String] The URI associated with this node.
         # @param level [Integer] The node's level.
 
-        def initialize(uri, level)
+        def initialize(label, uri, level)
+          @label = label.split.join(' ')
           @uri = uri
           @level = level
           @parent = nil
@@ -121,6 +135,9 @@ module Cf
       # since the +li+ are generated with custom +style+ attributes that indent some.
       # We are interested in this hierarchy, because the campgrounds will be at its leaves; therefore, the
       # scrubber extracts that information from the CSS properties of each element.
+      # Another reason we are interested in the hierarchy is that some states lump all campgrounds for
+      # all national forests in one page, where the root (0 level) nodes are national forest names.
+      # In that case, we want to be able to access the root elements alone for heuristic checks.
       #
       # The scrubbed contents contain the following data structures:
       # - An array of strings containing the URIs to the scrubbed +li+ elements.
@@ -182,7 +199,7 @@ module Cf
         # @param res [Net::HTTPResponse] The response containing the page to scrub.
 
         def scrub(res)
-          @root = Cf::Scrubber::Usda::CampNode.new(nil, Cf::Scrubber::Usda::CampNode::ROOT_LEVEL)
+          @root = Cf::Scrubber::Usda::CampNode.new('root', nil, Cf::Scrubber::Usda::CampNode::ROOT_LEVEL)
           @camp_list = []
 
           cur_node = @root
@@ -221,7 +238,7 @@ module Cf
 
                 @camp_list << c
 
-                # OK now the tough part: figure out where this guy goes in the tree
+                # OK now the tough part: figure out where this guy goes in the tree.
                 # A negative delta means the node is uplevel from current, so we need to walk back
                 # up the tree.
                 # A zero delta means it is at the same level as current, so we also need to walk back, once
@@ -238,7 +255,7 @@ module Cf
                   nl = cur_node.level
                   while delta > Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
                     nl += Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
-                    nn = Cf::Scrubber::Usda::CampNode.new(nil, nl)
+                    nn = Cf::Scrubber::Usda::CampNode.new('dummy', nil, nl)
                     delta -= Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
                     cur_node.add_child(nn)
                     cur_node = nn
@@ -247,7 +264,7 @@ module Cf
 
                 # OK, now we can add it in the right place
 
-                nc = Cf::Scrubber::Usda::CampNode.new(camp_url, camp_level)
+                nc = Cf::Scrubber::Usda::CampNode.new(camp_name, camp_url, camp_level)
                 cur_node.add_child(nc)
                 cur_node = nc
               end
@@ -555,6 +572,11 @@ module Cf
                   k = n['value']
                   s = ''
                   n.search('text()').each { |t| s << t.serialize }
+                  
+                  # We normalize the forest name by collapsing whitespace. This makes the code a bit
+                  # more forgiving to typos both in the USFS site, and from the client.
+
+                  s = Cf::Scrubber::Usda.collapse_ws(s)
                   forests[s] = k.to_i
                 end
               end
@@ -571,7 +593,7 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a forest
         #  name, and the corresponding identifier is obtained from {#forests_for_state}.
         #
         # @return [Net::HTTPResponse] Returns a response object containing the home page for the forest.
@@ -615,7 +637,8 @@ module Cf
         # @param page_name [String] The name of the secondary page to load; this is the label of the list item
         #  that holds the link to the page.
         #
-        # @return [Net::HTTPResponse] Returns a response object containing a secondary page for the forest.
+        # @return [Net::HTTPResponse, nil] Returns a response object containing a secondary page for the
+        #  forest, or +nil+ if the forest was not found.
 
         def get_forest_secondary_page(state_id, forest_id, page_name)
           r_res = nil
@@ -623,6 +646,7 @@ module Cf
           if f_res.is_a?(Net::HTTPOK)
             doc = Nokogiri::HTML(f_res.body)
             elem, href = get_forest_left_menu_node(f_res, doc, page_name)
+            return nil if href.nil?
             r_res = get(href)
           end
 
@@ -717,8 +741,8 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state 
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a
+        #  forest name, and the corresponding identifier is obtained from {#forests_for_state}.
         # @param types [Array<Symbol,String>] An array listing the campsite types to include in the list;
         #  campgrounds that offer campsites from the list are added to the return set.
         #  A +nil+ value indicates that all camping types are to be included.
@@ -871,9 +895,9 @@ module Cf
 
         def normalize_forest_id(state_id, forest_id)
           if forest_id.is_a?(String)
-            s = forest_id
+            s = Cf::Scrubber::Usda.collapse_ws(forest_id)
             f = forests_for_state(state_id)
-            forest_id = f[forest_id]
+            forest_id = f[s]
             self.logger.warn("unknown forest or grassland name: #{s}") if forest_id.nil?
           end
           forest_id
@@ -913,12 +937,12 @@ module Cf
         # @return [String] Returns the forest/grassland name, as described above.
 
         def normalize_forest_name(state_id, forest_name)
-          return forest_name if forest_name.is_a?(String)
+          return Cf::Scrubber::Usda.collapse_ws(forest_name) if forest_name.is_a?(String)
 
-          # There are no more that a couple dozen forests per state, so we can do a linear search
+          # There are no more than a couple dozen forests per state, so we can do a linear search
 
           forests_for_state(state_id).each do |fk, fv|
-            return fk if forest_name == fv
+            return Cf::Scrubber::Usda.collapse_ws(fk) if forest_name == fv
           end
 
           self.logger.warn("unknown forest or grassland identifier: #{forest_name}")
@@ -1021,11 +1045,13 @@ module Cf
 
         def get_forest_left_menu_node(res, doc, node_label, qf = [ ])
           root_element = doc.css("div#leftcol > table > tr")[2]
-          home_element = root_element.css("div.navleft ul")
-          home_element.css('li > a > span').each do |n|
-            t = n.text()
-            if t == node_label
-              return [ n.parent.parent, adjust_href(n.parent['href'], res.uri, qf) ]
+          unless root_element.nil?
+            home_element = root_element.css("div.navleft ul")
+            home_element.css('li > a > span').each do |n|
+              t = n.text()
+              if t == node_label
+                return [ n.parent.parent, adjust_href(n.parent['href'], res.uri, qf) ]
+              end
             end
           end
 
@@ -1084,7 +1110,7 @@ module Cf
           page_name = CAMPGROUND_TYPES[type]
           res = get(url)
           if res.is_a?(Net::HTTPOK)
-            self.logger.info { "scan_campground_pages(#{page_name}, #{state_name}, #{forest_name})" }
+            self.logger.info { "scan_camping_subpage(#{page_name}, #{state_name}, #{forest_name})" }
 
             boilerplate = {
               organization: ORGANIZATION_NAME,
@@ -1098,7 +1124,42 @@ module Cf
 
             pg = CampingPage.new(page_name)
             pg.scrub(res)
-            pg.root.depth_first do |n|
+
+            # Hack time! Some states use a common page for the campgrounds for all forests in the state
+            # (see, for example, NC). In this case, it seems that the forests are the 0-level items,
+            # and campgrounds are nested underneath. (The 0-level items are pg.root's children.)
+            # So we need to detect that structure: if the labels of the 0-levels look like
+            # "... National Forest" or "... National Grassland", then we assume we are in the multiple
+            # forest situation. In this case, we look for a child whose label is *forest_name*, and if
+            # we extract its leaves.
+            # Otherwise, we extract root's leaves.
+            #
+            # Note that we must do the label check, because the absence of *forest_name* does not necessarily
+            # indicate that this is not a multiple-forest situation, since the specific forest may not have
+            # any campgrounds for this page.
+
+            multiple_forests = true
+            forest_root = nil
+            pg.root.children.each do |c|
+              # some national forest names have multiple spaces, surely as a consequence of typos
+
+              if (c.label !~ /National\s+Forest$/i) && (c.label !~ /National\s+Grassland$/i)
+                multiple_forests = false
+              end
+              forest_root = c if c.label == forest_name
+            end
+
+            # decision time! If we have no forest_root and it seems to be multiple forests, we deduce
+            # (hopefully correctly!) that this forest does not have entries of this type and therefore we
+            # can skip the traversal
+
+            return if forest_root.nil? && multiple_forests
+
+            # Otherwise, we traverse either the forest_root (this should be a multiple forests case),
+            # or the page root (this is a single forest)
+
+            scan_root = (forest_root) ? forest_root : pg.root
+            scan_root.depth_first do |n|
               # OK so we only emit leaf nodes.
               # That's the heuristic here: we assume that the USFS web pages list campgrounds in the
               # leaf nodes
