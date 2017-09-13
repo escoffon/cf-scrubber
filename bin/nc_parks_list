@@ -2,7 +2,7 @@
 
 require 'cf/scrubber/nc/script'
 
-class PrintParkList < Cf::Scrubber::Nc::Script::ParkList
+class PrintParkList < Cf::Scrubber::NC::Script::ParkList
   class Parser < Cf::Scrubber::Script::CampgroundList::Parser
     def initialize()
       rv = super()

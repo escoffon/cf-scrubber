@@ -2,10 +2,11 @@ require 'optparse'
 require 'logger'
 require 'cf/scrubber'
 require 'cf/scrubber/nv/script'
+require 'cf/scrubber/script/campground_list'
 
 module Cf
   module Scrubber
-    module Nv
+    module NV
       module Script
         # Framework class for extracting the park list.
 
@@ -23,11 +24,11 @@ module Cf
           # web site, and yields to the block.
           #
           # @yield [sp, act] passes the following arguments to the block:
-          #  - *sp* is the active instance of {Cf::Scrubber::Nv::StateParks}.
+          #  - *sp* is the active instance of {Cf::Scrubber::NV::StateParks}.
           #  - *pd* is a hash containing data for a park.
 
           def process(&blk)
-            sp = Cf::Scrubber::Nv::StateParks.new(nil, {
+            sp = Cf::Scrubber::NV::StateParks.new(nil, {
                                                     :output => self.parser.options[:output],
                                                     :logger => self.parser.options[:logger],
                                                     :logger_level => self.parser.options[:logger_level]

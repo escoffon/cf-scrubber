@@ -1,6 +1,6 @@
 module Cf
   module Scrubber
-    module Co
+    module CO
       # The namespace for framework classes to implement various CO State Park scripts.
 
       module Script

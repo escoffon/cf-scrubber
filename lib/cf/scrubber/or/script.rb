@@ -1,6 +1,6 @@
 module Cf
   module Scrubber
-    module Or
+    module OR
       # The namespace for framework classes to implement various OR State Park scripts.
 
       module Script

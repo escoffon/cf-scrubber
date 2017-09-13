@@ -1,6 +1,6 @@
 module Cf
   module Scrubber
-    module Ca
+    module CA
       # The namespace for framework classes to implement various CA State Park scripts.
 
       module Script

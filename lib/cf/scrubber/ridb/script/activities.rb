@@ -11,10 +11,13 @@ module Cf::Scrubber::RIDB::Script
     # A class to parse command line arguments.
     #
     # This class defines the following options:
-    # - *-kAPIKEY* (*--api-key=APIKEY*) the API key to use.
-    # - *-sSORT* (*--sort=SORT*) defines the sort algorithm.
+    # - <tt>-k APIKEY</tt> (<tt>--api-key=APIKEY</tt>) the API key to use.
+    # - <tt>-s SORT</tt> (<tt>--sort=SORT</tt>) defines the sort algorithm.
+    #   Allowed values are: +id+ sorts by activity ID; +name+ sorts by activity name. Defaults to +id+.
 
     class Parser < Cf::Scrubber::Script::Parser
+      # @!visibility private
+
       SORT = [ :id, :name ]
 
       # Initializer.

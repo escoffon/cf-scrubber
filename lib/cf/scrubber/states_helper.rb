@@ -87,9 +87,9 @@ module Cf::Scrubber
 
       def get_state_code(name)
         n = name.to_s
-        code = @name_to_state_map[n.downcase]
+        code = _name_to_state_map[n.downcase]
         return code unless code.nil?
-        return n.upcase if (n.length == 2) && @state_to_name_map.has_key?(n.upcase)
+        return n.upcase if (n.length == 2) && _state_to_name_map.has_key?(n.upcase)
         nil
       end
 
@@ -102,7 +102,7 @@ module Cf::Scrubber
       #  to a valid code, returns +nil+.
 
       def get_state_name(code)
-        @state_to_name_map[code.to_s.upcase]
+        _state_to_name_map[code.to_s.upcase]
       end
     end
 
@@ -148,12 +148,20 @@ module Cf::Scrubber
       base.send(:include, InstanceMethods)
 
       base.class_eval do
-        @name_to_state_map = {}
-        @state_to_name_map = {}
+        @@name_to_state_map = {}
+        @@state_to_name_map = {}
 
         STATE_CODES.each do |sk, sv|
-          @name_to_state_map[sv.downcase] = sk.to_s
-          @state_to_name_map[sk.to_s] = sv
+          @@name_to_state_map[sv.downcase] = sk.to_s
+          @@state_to_name_map[sk.to_s] = sv
+        end
+ 
+        def self._name_to_state_map()
+          @@name_to_state_map
+        end
+
+        def self._state_to_name_map()
+          @@state_to_name_map
         end
       end
     end

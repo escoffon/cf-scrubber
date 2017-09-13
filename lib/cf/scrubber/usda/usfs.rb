@@ -4,13 +4,15 @@ require 'net/http'
 require 'nokogiri'
 require 'json'
 require 'logger'
+require 'cf/scrubber/base'
+require 'cf/scrubber/states_helper'
 
 module Cf
   module Scrubber
     # The namespace for scrubbers for USDA sites.
 
-    module Usda
-      # @!visibility verbose
+    module USDA
+      # @!visibility private
  
       def self.collapse_ws(s)
         s.split.join(' ')
@@ -51,14 +53,14 @@ module Cf
         # @!attribute [r]
         # The node's parent.
         #
-        # @return [Cf::Scrubber::Usda::CampNode] the node's parent.
+        # @return [Cf::Scrubber::USDA::CampNode] the node's parent.
 
         attr_reader :parent
 
         # @!attribute [r]
         # The node's children.
         #
-        # @return [Array<Cf::Scrubber::Usda::CampNode>] the node's children.
+        # @return [Array<Cf::Scrubber::USDA::CampNode>] the node's children.
 
         attr_reader :children
 
@@ -80,7 +82,7 @@ module Cf
         # This method adds _obj_ to the list of children, sets its parent to +self+, and sets the
         # level to the level plus {LEVEL_DELTA}.
         #
-        # @param obj [Cf::Scrubber::Usda::CampNode] The object to add to the children.
+        # @param obj [Cf::Scrubber::USDA::CampNode] The object to add to the children.
 
         def add_child(obj)
           obj.set_parent(self)
@@ -112,7 +114,7 @@ module Cf
 
         # Set the parent.
         #
-        # @param parent [Cf::Scrubber::Usda::CampNode] The node's parent.
+        # @param parent [Cf::Scrubber::USDA::CampNode] The node's parent.
 
         def set_parent(parent)
           @parent = parent
@@ -175,7 +177,7 @@ module Cf
         # @!attribute [r]
         # The root of the campground hierarchy.
         #
-        # @return [Cf::Scrubber::Usda::CampNode] the root node for the +li+ hierarchy.
+        # @return [Cf::Scrubber::USDA::CampNode] the root node for the +li+ hierarchy.
 
         attr_reader :root
 
@@ -199,7 +201,7 @@ module Cf
         # @param res [Net::HTTPResponse] The response containing the page to scrub.
 
         def scrub(res)
-          @root = Cf::Scrubber::Usda::CampNode.new('root', nil, Cf::Scrubber::Usda::CampNode::ROOT_LEVEL)
+          @root = Cf::Scrubber::USDA::CampNode.new('root', nil, Cf::Scrubber::USDA::CampNode::ROOT_LEVEL)
           @camp_list = []
 
           cur_node = @root
@@ -249,14 +251,14 @@ module Cf
                 if delta <= 0
                   while delta <= 0
                     cur_node = cur_node.parent
-                    delta += Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
+                    delta += Cf::Scrubber::USDA::CampNode::LEVEL_DELTA
                   end
                 else
                   nl = cur_node.level
-                  while delta > Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
-                    nl += Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
-                    nn = Cf::Scrubber::Usda::CampNode.new('dummy', nil, nl)
-                    delta -= Cf::Scrubber::Usda::CampNode::LEVEL_DELTA
+                  while delta > Cf::Scrubber::USDA::CampNode::LEVEL_DELTA
+                    nl += Cf::Scrubber::USDA::CampNode::LEVEL_DELTA
+                    nn = Cf::Scrubber::USDA::CampNode.new('dummy', nil, nl)
+                    delta -= Cf::Scrubber::USDA::CampNode::LEVEL_DELTA
                     cur_node.add_child(nn)
                     cur_node = nn
                   end
@@ -264,7 +266,7 @@ module Cf
 
                 # OK, now we can add it in the right place
 
-                nc = Cf::Scrubber::Usda::CampNode.new(camp_name, camp_url, camp_level)
+                nc = Cf::Scrubber::USDA::CampNode.new(camp_name, camp_url, camp_level)
                 cur_node.add_child(nc)
                 cur_node = nc
               end
@@ -294,7 +296,9 @@ module Cf
       # Scrubber for national forest campgrounds.
       # This scrubber walks the National Forest Service web site to extract information about campgrounds.
 
-      class NationalForestService < Cf::Scrubber::Base
+      class USFS < Cf::Scrubber::Base
+        include Cf::Scrubber::StatesHelper
+
         # The name of the organization dataset (the National Forest Service, which is part of USDA)
 
         ORGANIZATION_NAME = 'usda:nfs'
@@ -326,83 +330,22 @@ module Cf
 
         # @!visibility private
         CAMPGROUND_TYPES = {
-          :standard => CAMPGROUND_CAMPING_SUBPAGE,
-          :group => CAMPGROUND_GROUP_CAMPING_SUBPAGE,
-          :cabin => CAMPGROUND_CABINS_SUBPAGE,
-          :rv => CAMPGROUND_RV_CAMPING_SUBPAGE
-        }
-
-        # @!visibility private
-        # State codes and state names.
-
-        STATE_CODES = {
-          AL: 'Alabama',
-          AK: 'Alaska',
-          AZ: 'Arizona',
-          AR: 'Arkansas',
-          CA: 'California',
-          CO: 'Colorado',
-          CT: 'Connecticut',
-          DE: 'Delaware',
-          FL: 'Florida',
-          GA: 'Georgia',
-          HI: 'Hawaii',
-          ID: 'Idaho',
-          IL: 'Illinois',
-          IN: 'Indiana',
-          IA: 'Iowa',
-          KS: 'Kansas',
-          KY: 'Kentucky',
-          LA: 'Louisiana',
-          ME: 'Maine',
-          MD: 'Maryland',
-          MA: 'Massachusetts',
-          MI: 'Michigan',
-          MN: 'Minnesota',
-          MS: 'Mississippi',
-          MO: 'Missouri',
-          MT: 'Montana',
-          NE: 'Nebraska',
-          NV: 'Nevada',
-          NH: 'New Hampshire',
-          NJ: 'New Jersey',
-          NM: 'New Mexico',
-          NY: 'New York',
-          NC: 'North Carolina',
-          ND: 'North Dakota',
-          OH: 'Ohio',
-          OK: 'Oklahoma',
-          OR: 'Oregon',
-          PA: 'Pennsylvania',
-          RI: 'Rhode Island',
-          SC: 'South Carolina',
-          SD: 'South Dakota',
-          TN: 'Tennessee',
-          TX: 'Texas',
-          UT: 'Utah',
-          VT: 'Vermont',
-          VA: 'Virginia',
-          WA: 'Washington',
-          WV: 'West Virginia',
-          WI: 'Wisconsin',
-          WY: 'Wyoming',
-
-          AS: 'American Samoa',
-          DC: 'District of Columbia',
-          FM: 'Federated States of Micronesia',
-          GU: 'Guam',
-          MH: 'Marshall Islands',
-          MP: 'Northern Mariana Islands',
-          PW: 'Palau',
-          PR: 'Puerto Rico',
-          VI: 'Virgin Islands'
-
-          # AE: 'Armed Forces Africa',
-          # AA: 'Armed Forces Americas',
-          # AE: 'Armed Forces Canada',
-          # AE: 'Armed Forces Europe',
-          # AE: 'Armed Forces Middle East',
-          # AP: 'Armed Forces Pacific'
+          :standard => {
+            page: CAMPGROUND_CAMPING_SUBPAGE,
+            actid: 29
+          },
+          :group => {
+            page: CAMPGROUND_GROUP_CAMPING_SUBPAGE,
+            actid: 33
+          },
+          :cabin => {
+            page: CAMPGROUND_CABINS_SUBPAGE,
+            actid: 101
+          },
+          :rv => {
+            page: CAMPGROUND_RV_CAMPING_SUBPAGE,
+            actid: 31
+          }
         }
 
         # Key translations.
@@ -445,7 +388,7 @@ module Cf
         # Initializer.
         #
         # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
-        #  value of {Cf::Scrubber::Usda::NationalForestService::ROOT_URL}
+        #  value of {Cf::Scrubber::USDA::USFS::ROOT_URL}
         # @param opts [Hash] Additional configuration options for the scrubber.
         #  See {Cf::Scrubber::Base#initializer}.
 
@@ -481,7 +424,7 @@ module Cf
         #  If <i>state_id</i> contains a bad state, or there are no forests in the given state, returns
         #  an empty hash.
 
-        def forests_for_state(state_id)
+        def forest_ids_for_state(state_id)
           state_id = normalize_state_id(state_id)
           
           # we have to account for states that don't have any forests (and therefore are not in the
@@ -537,7 +480,7 @@ module Cf
         # @return [Hash] the list of forests in the given state; keys are strings containing the forest name,
         #  and values are the corresponding forest identifiers. If the current value is not defined, calls
         #  {#build_forest_list} to load it.
-        #  This hash is also cached and is available after the call via {#forests_for_state}.
+        #  This hash is also cached and is available after the call via {#forest_ids_for_state}.
 
         def build_forest_list(state_id)
           state_id = normalize_state_id(state_id)
@@ -576,7 +519,7 @@ module Cf
                   # We normalize the forest name by collapsing whitespace. This makes the code a bit
                   # more forgiving to typos both in the USFS site, and from the client.
 
-                  s = Cf::Scrubber::Usda.collapse_ws(s)
+                  s = Cf::Scrubber::USDA.collapse_ws(s)
                   forests[s] = k.to_i
                 end
               end
@@ -593,34 +536,45 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a forest
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String, Hash] The forest identifier. If a string, this is assumed to
+        #  be a forest name, and the corresponding identifier is obtained from {#forest_ids_for_state}.
+        #  If a hash, this is assumed to be a forest descriptor ase returned by
+        #  {Cf::Scrubber::USDA::USFSHelper.forest_descriptors_for_state}; in this case the URL for the
+        #  home page is available in the *:url* property of <i>forest_id</i>
         #
         # @return [Net::HTTPResponse] Returns a response object containing the home page for the forest.
 
         def get_forest_home_page(state_id, forest_id)
-          state_id = normalize_state_id(state_id)
-          forest_id = normalize_forest_id(state_id, forest_id)
-          js_cookie = CGI::Cookie.new("has_js", "1")
-          res = post(self.root_url, {
-                       'state' => state_id,
-                       'name' => forest_id,
-                       'form_build_id' => 'form-MJQbK6EUpm0ALbpFKBEvxv7MUTTSy2St78gYr7JEkpQ',
-                       'form_id' => 'fs_search_form_find_a_forest',
-                       'op' => 'Go'
-                     }, {
-                       headers: {
-                         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-                       },
-                       cookies: [ js_cookie.to_s ]
-                     })
-
-          if res.is_a?(Net::HTTPRedirection)
-            res = get(res['Location'], {
+          if forest_id.is_a?(Hash)
+            res = get(forest_id[:url], {
                         headers: {
                           'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
                         }
                       })
+          else
+            state_id = normalize_state_id(state_id)
+            forest_id = normalize_forest_id(state_id, forest_id)
+            js_cookie = CGI::Cookie.new("has_js", "1")
+            res = post(self.root_url, {
+                         'state' => state_id,
+                         'name' => forest_id,
+                         'form_build_id' => 'form-MJQbK6EUpm0ALbpFKBEvxv7MUTTSy2St78gYr7JEkpQ',
+                         'form_id' => 'fs_search_form_find_a_forest',
+                         'op' => 'Go'
+                       }, {
+                         headers: {
+                           'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                         },
+                         cookies: [ js_cookie.to_s ]
+                       })
+
+            if res.is_a?(Net::HTTPRedirection)
+              res = get(res['Location'], {
+                          headers: {
+                            'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                          }
+                        })
+            end
           end
 
           res
@@ -632,8 +586,11 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String, Hash] The forest identifier. If a string, this is assumed to
+        #  be a forest name, and the corresponding identifier is obtained from {#forest_ids_for_state}.
+        #  If a hash, this is assumed to be a forest descriptor ase returned by
+        #  {Cf::Scrubber::USDA::USFSHelper.forest_descriptors_for_state}; in this case the URL for the
+        #  home page is available in the *:url* property of <i>forest_id</i>
         # @param page_name [String] The name of the secondary page to load; this is the label of the list item
         #  that holds the link to the page.
         #
@@ -658,8 +615,11 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String, Hash] The forest identifier. If a string, this is assumed to
+        #  be a forest name, and the corresponding identifier is obtained from {#forest_ids_for_state}.
+        #  If a hash, this is assumed to be a forest descriptor ase returned by
+        #  {Cf::Scrubber::USDA::USFSHelper.forest_descriptors_for_state}; in this case the URL for the
+        #  home page is available in the *:url* property of <i>forest_id</i>
         #
         # @return [Net::HTTPResponse] Returns a response object containing the recreation page for the forest.
 
@@ -672,8 +632,11 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String, Hash] The forest identifier. If a string, this is assumed to
+        #  be a forest name, and the corresponding identifier is obtained from {#forest_ids_for_state}.
+        #  If a hash, this is assumed to be a forest descriptor ase returned by
+        #  {Cf::Scrubber::USDA::USFSHelper.forest_descriptors_for_state}; in this case the URL for the
+        #  home page is available in the *:url* property of <i>forest_id</i>
         # @param subpage_name [String] The name of the recreation subpage to load; this is the label of the list
         #  item that holds the link to the page.
         #
@@ -698,13 +661,28 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String, Hash] The forest identifier. If a string, this is assumed to
+        #  be a forest name, and the corresponding identifier is obtained from {#forest_ids_for_state}.
+        #  If a hash, this is assumed to be a forest descriptor ase returned by
+        #  {Cf::Scrubber::USDA::USFSHelper.forest_descriptors_for_state}; in this case the URL for the
+        #  home page is available in the *:url* property of <i>forest_id</i>
         #
         # @return [Net::HTTPResponse] Returns a response object containing the camping subpage for the forest.
 
         def get_forest_camping_page(state_id, forest_id)
-          get_forest_recreation_subpage(state_id, forest_id, 'Camping & Cabins')
+          # See the discussion in {#get_forest_camping_subpage_urls} for why we do this
+
+          if forest_id.is_a?(Hash) && forest_id[:facility]
+            r_res = get(forest_id[:url])
+            if r_res.is_a?(Net::HTTPOK)
+              s_href = nil
+              doc = Nokogiri::HTML(r_res.body)
+              elem, href = get_forest_left_menu_node(r_res, doc, 'Camping & Cabins')
+              s_res = get(href)
+            end
+          else
+            get_forest_recreation_subpage(state_id, forest_id, 'Camping & Cabins')
+          end
         end
 
         # Get a camping subpage for a given forest identifier.
@@ -713,8 +691,11 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a state
-        #  name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String, Hash] The forest identifier. If a string, this is assumed to
+        #  be a forest name, and the corresponding identifier is obtained from {#forest_ids_for_state}.
+        #  If a hash, this is assumed to be a forest descriptor ase returned by
+        #  {Cf::Scrubber::USDA::USFSHelper.forest_descriptors_for_state}; in this case the URL for the
+        #  home page is available in the *:url* property of <i>forest_id</i>
         # @param subpage_name [String] The name of the camping subpage to load; this is the label of the list
         #  item that holds the link to the page.
         #
@@ -741,8 +722,11 @@ module Cf
         #
         # @param state_id [Integer, String] The state identifier. If a string, this is assumed to be a state 
         #  name, and the corresponding identifier is obtained from the hash in the {#states} attribute.
-        # @param forest_id [Integer, String] The forest identifier. If a string, this is assumed to be a
-        #  forest name, and the corresponding identifier is obtained from {#forests_for_state}.
+        # @param forest_id [Integer, String, Hash] The forest identifier. If a string, this is assumed to
+        #  be a forest name, and the corresponding identifier is obtained from {#forest_ids_for_state}.
+        #  If a hash, this is assumed to be a forest descriptor ase returned by
+        #  {Cf::Scrubber::USDA::USFSHelper.forest_descriptors_for_state}; in this case the URL for the
+        #  home page is available in the *:url* property of <i>forest_id</i>
         # @param types [Array<Symbol,String>] An array listing the campsite types to include in the list;
         #  campgrounds that offer campsites from the list are added to the return set.
         #  A +nil+ value indicates that all camping types are to be included.
@@ -777,8 +761,12 @@ module Cf
 
           state_id = normalize_state_id(state_id)
           state_name = normalize_state_name(state_id)
-          forest_id = normalize_forest_id(state_id, forest_id)
-          forest_name = normalize_forest_name(state_id, forest_id)
+          if forest_id.is_a?(Hash)
+            forest_name = forest_id[:name]
+          else
+            forest_id = normalize_forest_id(state_id, forest_id)
+            forest_name = normalize_forest_name(state_id, forest_id)
+          end
 
           @campgrounds_map = { }
           @campgrounds = [ ]
@@ -813,7 +801,7 @@ module Cf
 
         def get_state_campgrounds(state_id, types = nil, with_details = false)
           camps = []
-          forests_for_state(state_id).each do |forest_id|
+          forest_ids_for_state(state_id).each do |forest_id|
             camps.concat(get_forest_campgrounds(state_id, forest_id, types, with_details))
           end
 
@@ -832,11 +820,12 @@ module Cf
           dh = {}
           res = get(campground[:uri])
           if res.is_a?(Net::HTTPOK)
-            self.logger.info { "get_campground_details(#{campground[:name]}, #{campground[:state]}, #{campground[:forest]})" }
+            self.logger.info { "get_campground_details((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]}))" }
 
             doc = Nokogiri::HTML(res.body)
 
             dh[:at_a_glance] = extract_at_a_glance_details(doc, campground)
+            activities = extract_activities_details(doc, campground)
 # still needs some work
 #            dh[:blurb] = extract_blurb_details(doc, campground)
             dh[:location] = {}
@@ -850,8 +839,9 @@ module Cf
             end
 
             dh[:additional_info] = convert_at_a_glance_details(dh[:at_a_glance], doc, campground)
+            dh[:additional_info][:activities] = activities.join(', ') if activities.length > 0
           else
-            self.logger.warn { "get_campground_details(#{campground[:name]}, #{campground[:state]}, #{campground[:forest]}) gets #{res}" }
+            self.logger.warn { "get_campground_details((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]})) gets #{res}" }
           end
 
           dh
@@ -861,22 +851,23 @@ module Cf
         # If <i>state_id</i> is an integer, returns its value; if it is a string, looks up the corresponding
         # state identifier from the states map in {#states}.
         #
-        # @param state_id [Integer, String] The state identifier (if an integer), or the state name
-        #  (if a string).
+        # @param state_id [Integer, String, Symbol] The state identifier (if an integer), or the state name
+        #  (if a string or symbol).
         #
         # @return [Integer] Returns the state identifier, as described above.
 
         def normalize_state_id(state_id)
-          if state_id.is_a?(String)
-            if state_id.length == 2
-              sc = state_id.upcase.to_sym
+          if state_id.is_a?(String) || state_id.is_a?(Symbol)
+            sid = state_id.to_s
+            if sid.length == 2
+              sc = sid.upcase.to_sym
               s = STATE_CODES[sc]
               self.logger.warn("unknown state code: #{sc}") if s.nil?
               state_id = self.states()[s]
             else
-              s = state_id
+              sid = state_id
               state_id = self.states()[state_id]
-              self.logger.warn("unknown state name: #{s}") if state_id.nil?
+              self.logger.warn("unknown state name: #{sid}") if state_id.nil?
             end
           end
           state_id
@@ -884,7 +875,7 @@ module Cf
 
         # Normalize the forest or grassland identifier.
         # If <i>forest_id</i> is an integer, returns its value; if it is a string, looks up the corresponding
-        # forest identifier from the forests map in {#forests_for_state}.
+        # forest identifier from the forests map in {#forest_ids_for_state}.
         #
         # @param state_id [Integer, String] The state identifier (if an integer), or the state name
         #  (if a string).
@@ -895,8 +886,8 @@ module Cf
 
         def normalize_forest_id(state_id, forest_id)
           if forest_id.is_a?(String)
-            s = Cf::Scrubber::Usda.collapse_ws(forest_id)
-            f = forests_for_state(state_id)
+            s = Cf::Scrubber::USDA.collapse_ws(forest_id)
+            f = forest_ids_for_state(state_id)
             forest_id = f[s]
             self.logger.warn("unknown forest or grassland name: #{s}") if forest_id.nil?
           end
@@ -927,7 +918,7 @@ module Cf
 
         # Normalize the forest or grassland name.
         # If <i>forest_name</i> is a string, returns its value; if it is an integer, looks up the corresponding
-        # forest name from the forests map in {#forests_for_state}.
+        # forest name from the forests map in {#forest_ids_for_state}.
         #
         # @param state_id [Integer, String] The state identifier (if an integer), or the state name
         #  (if a string).
@@ -937,73 +928,16 @@ module Cf
         # @return [String] Returns the forest/grassland name, as described above.
 
         def normalize_forest_name(state_id, forest_name)
-          return Cf::Scrubber::Usda.collapse_ws(forest_name) if forest_name.is_a?(String)
+          return Cf::Scrubber::USDA.collapse_ws(forest_name) if forest_name.is_a?(String)
 
           # There are no more than a couple dozen forests per state, so we can do a linear search
 
-          forests_for_state(state_id).each do |fk, fv|
-            return Cf::Scrubber::Usda.collapse_ws(fk) if forest_name == fv
+          forest_ids_for_state(state_id).each do |fk, fv|
+            return Cf::Scrubber::USDA.collapse_ws(fk) if forest_name == fv
           end
 
           self.logger.warn("unknown forest or grassland identifier: #{forest_name}")
           nil
-        end
-
-        # Given a state name, return its corresponding two-letter code.
-        #
-        # @param name [String] The state name.
-        #
-        # @return [String, nil] If _name_ is a valid state name, returns its two-letter code; otherwise,
-        #  returns +nil+.
-        #  If _name_ is already a valid two-letter code, returns _name_ converted to uppercase.
-
-        def self.state_code(name)
-          if name.length == 2
-            n = name.upcase
-            return n if STATE_CODES.has_key?(n.to_sym)
-          else
-            STATE_CODES.each do |sk, sv|
-              return sk.to_s if sv == name
-            end
-          end
-
-          nil
-        end
-
-        # Given a two-letter state code, return the corresponding state name.
-        #
-        # @param code [String] The state code.
-        #
-        # @return [String, nil] If _code_ is a valid state code, returns its state name; otherwise,
-        #  returns +nil+.
-
-        def self.state_name(code)
-          ck = code.upcase.to_sym
-          STATE_CODES[ck]
-        end
-
-        # Given a state name, return its corresponding two-letter code.
-        # This is a wrapper around {Cf::Scrubber::Usda::NationalForestService.state_code}.
-        #
-        # @param name [String] The state name.
-        #
-        # @return [String, nil] If _name_ is a valid state name, returns its two-letter code; otherwise,
-        #  returns +nil+.
-
-        def state_code(name)
-          self.class.state_code(name)
-        end
-
-        # Given a two-letter state code, return the corresponding state name.
-        # This is a wrapper around {Cf::Scrubber::Usda::NationalForestService.state_name}.
-        #
-        # @param code [String] The state code.
-        #
-        # @return [String, nil] If _code_ is a valid state code, returns its state name; otherwise,
-        #  returns +nil+.
-
-        def state_name(code)
-          self.class.state_name(code)
         end
           
         private
@@ -1079,12 +1013,30 @@ module Cf
 
         def get_forest_camping_subpage_urls(state_id, forest_id, types)
           urls = { }
-          c_res = get_forest_camping_page(state_id, forest_id)
-          if c_res.is_a?(Net::HTTPOK)
-            doc = Nokogiri::HTML(c_res.body)
-            types.each do |t|
-              elem, href = get_forest_center_menu_node(c_res, doc, CAMPGROUND_TYPES[t], [ ])
-              urls[t] = href unless href.nil?
+
+          if forest_id.is_a?(Hash)
+            # if neither :label nor :container_label is present, this is not a USFS URL (typically it is
+            # a wilderness URL) and therefore we can skip it
+
+            if forest_id[:label] || forest_id[:container_label]
+              # A hash contains all the information we need to generate the URLs; there is no need to
+              # scrub HTML code
+
+              types.each do |t|
+                url = "http://#{Cf::Scrubber::USDA::USFSHelper::USFS_WEB_SITE_HOST}/activity/"
+                url += (forest_id[:container_label]) ? forest_id[:container_label] : forest_id[:label]
+                url += "/recreation/camping-cabins/?recid=#{forest_id[:usfs_id]}&actid=#{CAMPGROUND_TYPES[t][:actid]}"
+                urls[t] = url
+              end
+            end
+          else
+            c_res = get_forest_camping_page(state_id, forest_id)
+            if c_res.is_a?(Net::HTTPOK)
+              doc = Nokogiri::HTML(c_res.body)
+              types.each do |t|
+                elem, href = get_forest_center_menu_node(c_res, doc, CAMPGROUND_TYPES[t][:page], [ ])
+                urls[t] = href unless href.nil?
+              end
             end
           end
 
@@ -1107,10 +1059,10 @@ module Cf
         end
 
         def scan_camping_subpage(url, type, state_name, state_id, forest_name, forest_id, with_details)
-          page_name = CAMPGROUND_TYPES[type]
+          page_name = CAMPGROUND_TYPES[type][:page]
           res = get(url)
           if res.is_a?(Net::HTTPOK)
-            self.logger.info { "scan_camping_subpage(#{page_name}, #{state_name}, #{forest_name})" }
+            self.logger.info { "scan_camping_subpage((#{page_name}) (#{state_name}) (#{forest_name}))" }
 
             boilerplate = {
               organization: ORGANIZATION_NAME,
@@ -1143,7 +1095,7 @@ module Cf
             pg.root.children.each do |c|
               # some national forest names have multiple spaces, surely as a consequence of typos
 
-              if (c.label !~ /National\s+Forest$/i) && (c.label !~ /National\s+Grassland$/i)
+              if (c.label !~ /National\s+Fore$/i) && (c.label !~ /National\s+Grass$/i)
                 multiple_forests = false
               end
               forest_root = c if c.label == forest_name
@@ -1186,7 +1138,7 @@ module Cf
               end
             end
           else
-            self.logger.warn { "get_forest_campgrounds(#{state_name}, #{forest_name}) gets #{res}" }
+            self.logger.warn { "get_forest_campgrounds((#{state_name}) (#{forest_name})) gets #{res}" }
           end
         end
 
@@ -1205,7 +1157,7 @@ module Cf
                 if KEYS_MAP.has_key?(cur)
                   cur = KEYS_MAP[cur].to_sym
                 else  
-                  self.logger.warn("unsupported location key '#{m[1]}' for campground (#{campground[:state]})(#{campground[:forest]})(#{campground[:name]})")
+                  self.logger.warn("unsupported location key '#{m[1]}' for campground (#{campground[:state]}) (#{campground[:forest]}) (#{campground[:name]})")
                 end
                 
               end
@@ -1231,7 +1183,7 @@ module Cf
                     if KEYS_MAP.has_key?(s)
                       s = KEYS_MAP[s].to_sym
                     else
-                      self.logger.warn("unsupported at-a-glance key '#{ths}' for campground (#{campground[:state]})(#{campground[:forest]})(#{campground[:name]})")
+                      self.logger.warn("unsupported at-a-glance key '#{ths}' for campground (#{campground[:state]}) (#{campground[:forest]}) (#{campground[:name]})")
                     end
                     h[s] = td.inner_html().strip
                   end
@@ -1243,6 +1195,30 @@ module Cf
           end
 
           h
+        end
+
+        def extract_activities_details(doc, campground)
+          activities = [ ]
+          doc.css("div#centercol td > h2").each do |n|
+            if n.text() == 'Activities'
+              g = n
+              h3_current = nil
+              while true do
+                g = g.next_sibling()
+                break if g.nil?
+                if g.name == 'h3'
+                  h3_current = g
+                elsif g.name == 'div'
+                  g.css('h4').each do |ah4|
+                    activities << ah4.text()
+                  end
+                end
+              end
+              break
+            end
+          end
+
+          activities
         end
 
         def extract_blurb_details(doc, campground)

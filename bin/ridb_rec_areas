@@ -1,0 +1,46 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/ridb/script'
+
+class RecAreas < Cf::Scrubber::RIDB::Script::RecAreas
+  class Parser < Cf::Scrubber::RIDB::Script::RecAreas::Parser
+    def initialize()
+      rv = super()
+      p = self.parser
+
+      p.banner = "Usage: ridb_rec_areas [options]\n\nLists rec areas in the RIDB database"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(Parser.new)
+  end
+
+  def list_rec_areas()
+    @total_states = 0
+    @total_rec_areas = 0
+    self.exec do |api, state, areas|
+      print_rec_areas(state, areas)
+    end
+
+    self.output.print("-- total: #{@total_states} states, #{@total_rec_areas} rec areas\n")
+  end
+
+  def print_rec_areas(state, areas)
+    @total_states += 1
+    self.output.print("---- #{state} (#{areas.count} rec areas)\n")
+    areas.each do |a|
+      @total_rec_areas += 1
+      self.output.print("  -- #{a['RecAreaName']}\n")
+      a.each do |k, v|
+        self.output.print("    ++++++ #{k} : #{v}\n")
+      end
+    end
+  end
+end
+
+script = RecAreas.new()
+script.parser.parse(ARGV)
+script.list_rec_areas

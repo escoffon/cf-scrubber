@@ -2,13 +2,13 @@
 
 require 'cf/scrubber/usda/script'
 
-class PrintCampgrounds < Cf::Scrubber::Usda::Script::Campgrounds
-  class Parser < Cf::Scrubber::Usda::Script::Campgrounds::Parser
+class PrintCampgrounds < Cf::Scrubber::USDA::Script::Campgrounds
+  class Parser < Cf::Scrubber::USDA::Script::Campgrounds::Parser
     def initialize()
       rv = super()
 
       p = self.parser
-      p.banner = "Usage: usda_nfs_campgrounds [options]\n\nList campgrounds for one or more states and forests"
+      p.banner = "Usage: usfs_campgrounds [options]\n\nList campgrounds for one or more states and forests"
       
       rv
     end

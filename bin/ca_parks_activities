@@ -2,7 +2,7 @@
 
 require 'cf/scrubber/ca/script'
 
-class PrintActivities < Cf::Scrubber::Ca::Script::Activities
+class PrintActivities < Cf::Scrubber::CA::Script::Activities
   class Parser < Cf::Scrubber::Script::Parser
     def initialize()
       rv = super()

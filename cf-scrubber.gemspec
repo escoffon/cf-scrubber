@@ -54,4 +54,6 @@ Gem::Specification.new do |s|
                   ]
   s.add_dependency 'nokogiri', '~> 1.6'
   s.add_dependency 'json', '~> 1.8'
+
+  s.add_development_dependency 'minitest'
 end

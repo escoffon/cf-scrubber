@@ -11,7 +11,8 @@ module Cf::Scrubber::DOI::Script::NPS
     # A class to parse command line arguments.
     #
     # The base class defines the following options:
-    # - *-sSTATES* (*--states=STATES*) to set the list of states for which to list rec areas.
+    # - <tt>-s STATES</tt> (<tt>--states=STATES</tt>) to set the list of states for which to list campgrounds.
+    #   If not provided, all states are processed.
 
     class Parser < Cf::Scrubber::Script::Parser
       # Initializer.

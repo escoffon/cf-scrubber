@@ -9,7 +9,7 @@ module Cf
   module Scrubber
     # The namespace for scrubbers for NV sites.
 
-    module Nv
+    module NV
       # Scrubber for state park system campgrounds.
       # This scrubber walks the Nevada State Park System web site to extract information about campgrounds.
 
@@ -104,7 +104,7 @@ module Cf
         # Initializer.
         #
         # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
-        #  value of {Cf::Scrubber::Nv::StateParks::ROOT_URL}
+        #  value of {Cf::Scrubber::NV::StateParks::ROOT_URL}
         # @param opts [Hash] Additional configuration options for the scrubber.
         #  See {Cf::Scrubber::Base#initializer}.
 

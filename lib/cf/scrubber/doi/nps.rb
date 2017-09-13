@@ -17,7 +17,7 @@ module Cf
       # This scrubber extracts NPS information from the RIDB API to build lists of NPS campgrounds.
       # It then also pokes around in the NPS web site to extract some additional information, as needed.
 
-      class NationalParkService < Cf::Scrubber::Base
+      class NPS < Cf::Scrubber::Base
         include Cf::Scrubber::StatesHelper
 
         # The name of the organization dataset (the National Park Service, which is part of
@@ -35,7 +35,7 @@ module Cf
         # Initializer.
         #
         # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
-        #  value of {Cf::Scrubber::DOI::NationalParkService::ROOT_URL}
+        #  value of {Cf::Scrubber::DOI::NPS::ROOT_URL}
         # @param opts [Hash] Additional configuration options for the scrubber.
         #  See {Cf::Scrubber::Base#initializer}.
 
@@ -682,7 +682,6 @@ module Cf
           # - PARKING adds nothing
           # - CABIN adds :cabin
 
-#          print("++++++++++ #{ra['RecAreaName']} - #{fac['FacilityName']} - #{fac['FacilityTypeDescription']}\n")
           site_types = { }
           unknown = { }
           campsites = ridb.campsites_for_facility(fac['FacilityID'])
@@ -700,7 +699,6 @@ module Cf
             end
           end
 
-#          print("  ++++++++ #{site_types.keys}\n")
           rv = [ ]
           if site_types.count == 0
             # no known campsite types: this is steps 3 and 4 above
@@ -725,13 +723,11 @@ module Cf
               end
 
               if t =~ /GROUP (TENT|STANDARD|EQUESTRIAN)/
-#                print("    ++++++ #{t} - #{Regexp.last_match[0]}\n")
                 rv << Cf::Scrubber::Base::TYPE_GROUP unless rv.include?(Cf::Scrubber::Base::TYPE_GROUP)
               end
             end
           end
 
-#          print("  ++++++++ #{rv}\n")
           rv
         end
       end

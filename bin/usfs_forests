@@ -1,0 +1,25 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/usda/script/print_forests_per_state'
+
+class PrintForests < Cf::Scrubber::USDA::Script::PrintForestsPerState
+  class Parser < Cf::Scrubber::USDA::Script::PrintForestsPerState::Parser
+    def initialize()
+      rv = super()
+      p = self.parser
+
+      p.banner = "Usage: usfs_forests [options]\n\nLists national forests or grasslands for one or more states"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(PrintForests::Parser.new)
+  end
+end
+
+script = PrintForests.new()
+script.parser.parse(ARGV)
+script.list_forests
+

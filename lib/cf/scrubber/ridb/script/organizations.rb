@@ -11,8 +11,8 @@ module Cf::Scrubber::RIDB::Script
     # A class to parse command line arguments.
     #
     # This class defines the following options:
-    # - *-kAPIKEY* (*--api-key=APIKEY*) the API key to use.
-    # - *-n* (*--no-flat*) to have the script build a hierarchical rather than flat list.
+    # - <tt>-k APIKEY</tt> (<tt>--api-key=APIKEY</tt>) the API key to use.
+    # - <tt>-n</tt> (<tt>--no-flat</tt>) to have the script build a hierarchical rather than flat list.
 
     class Parser < Cf::Scrubber::Script::Parser
       # Initializer.

@@ -1,8 +1,11 @@
 #! /usr/bin/env ruby
 
 require 'cf/scrubber/usda/script'
+require 'cf/scrubber/states_helper'
 
-class PrintStates < Cf::Scrubber::Usda::Script::States
+class PrintStates < Cf::Scrubber::USDA::Script::States
+  include Cf::Scrubber::StatesHelper
+
   class Parser < Cf::Scrubber::Script::Parser
     FORMATS = [ :full, :short ]
 
@@ -10,7 +13,7 @@ class PrintStates < Cf::Scrubber::Usda::Script::States
       rv = super()
       p = self.parser
 
-      p.banner = "Usage: usda_nfs_states [options]\n\nLists states with a national forest or grassland"
+      p.banner = "Usage: usfs_states [options]\n\nLists states with a national forest or grassland"
 
       p.on_head("-i", "--with-index", "If present, emit the state indeces as well as names") do |n|
         self.options[:show_index] = true
@@ -35,12 +38,12 @@ class PrintStates < Cf::Scrubber::Usda::Script::States
     self.exec do |nfs, s, idx|
       if self.parser.options[:show_index]
         if self.parser.options[:format] == :short
-          self.output.printf("%s: %d\n", nfs.state_code(s), s[s])
+          self.output.printf("%s: %d\n", get_state_code(s), idx)
         else
           self.output.printf("%-18s: %d\n", s, idx)
         end
       else
-        s = nfs.state_code(s) if self.parser.options[:format] == :short
+        s = get_state_code(s) if self.parser.options[:format] == :short
         self.output.print("#{s}\n")
       end
     end

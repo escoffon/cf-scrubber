@@ -7,5 +7,5 @@ module Cf::Scrubber
   end
 end
 
-require 'cf/scrubber/doi/national_park_service'
+require 'cf/scrubber/doi/nps'
 

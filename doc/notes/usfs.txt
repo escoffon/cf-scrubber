@@ -25,3 +25,42 @@ Note: Also, all forests in AL are linked to a single page that covers 'National 
         Shoal Creek Ranger District
           Coleman Lake Recreation Area
 This means that the scrubber will think that all campgrounds in AL reside in the last NF loaded.
+
+Sep 12 2017 notes follow.
+
+The description of the organization of the USFS web site above is essentially accurate, but there
+are additional important details that need to be discussed.
+
+The USFS data seems to come from RIDB, although the organization is different; for example, not all NFs
+are stored as rec areas in RIDB.
+
+There seem to be three types of NF/NG arrangements in the USFS web site (as accessed from the
+state/NF dropdowns on the main page):
+
+1. Entities that map to a single USFS and RIDB entity with its own home page. For example, Tahoe NF.
+   These entities present their campgrounds on their own individual camping pages.
+   They often, but not always, appear as rec areas in RIDB; some times, as facilities.
+2. Entities that are grouped under a cluster entity, like Arapaho NF, Roosevelt NF, and Pawnee NG
+   in CO are listed seprately on the USFS web site's dropdown, but they land at the same page
+   for 'Arapaho & Roosevelt National Forests Pawnee NG'.
+   The campgrounds for the three are all mixed in, and there is no way to separate them in the
+   web site. There may or may not be an RIDB entry for the individual NFs/NGs.
+3. Entities that are clustered, but that also have separate home pages with separate camping pages.
+   For example, the AL NFs described above: they are clustered, but they have separate camping pages
+   that list just the campgrounds for the individual NF.
+
+There is an additional twist that some names are inconsistent between the USFS web site and RIDB.
+
+It is difficult (at best) to glean the entity type from the contents of a USFS web page.
+However, one can use the RIDB to get an idea of the arrangement, and then tweak them by hand to generate
+a map of the data organization on the USFS web site. This map is stored in a Ruby hash, and used to
+generate NF/NG access descriptors from a listo of NF/NG names. The map understands the three entity types
+listed above, and also the renaming issues.
+
+There is a logic to the URLs on the USFS web site, and we can use it to bypass some of the scrubbing
+used to gather the list of camping page URLs; this significantly increase the scrubbing performance,
+since we can use the forest descriptors to jump directly to the camping pages.
+
+The USFSHelper module implements support for accessing NF/NG camping data, and the two _db utilities
+in bin are used to generate RIDB and USFS data organization descriptors (the USFS one is then tweaked
+by hand)

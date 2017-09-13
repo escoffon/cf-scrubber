@@ -1,0 +1,24 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/script/checker'
+
+class ScrubChecker < Cf::Scrubber::Script::Checker
+  class Parser < Cf::Scrubber::Script::Processor::Parser
+    def initialize()
+      rv = super()
+
+      p = self.parser
+      p.banner = "Usage: scrub_checker [options]\n\nCheck a USFS scrub file."
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(Parser.new)
+  end
+end
+
+script = ScrubChecker.new()
+script.parser.parse(ARGV)
+script.check_file

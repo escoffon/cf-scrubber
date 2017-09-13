@@ -5,7 +5,7 @@ require 'cf/scrubber/ca/script'
 
 module Cf
   module Scrubber
-    module Ca
+    module CA
       module Script
         # Framework class for listing activity identifiers.
 
@@ -23,11 +23,11 @@ module Cf
           # web site, and yields to the block.
           #
           # @yield [sp, act] passes the following arguments to the block:
-          #  - *sp* is the active instance of {Cf::Scrubber::Ca::StateParks}.
+          #  - *sp* is the active instance of {Cf::Scrubber::CA::StateParks}.
           #  - *act* is a hash containing activity information: *:activity_id* and *:name*.
 
           def process(&blk)
-            sp = Cf::Scrubber::Ca::StateParks.new(nil, {
+            sp = Cf::Scrubber::CA::StateParks.new(nil, {
                                                     :output => self.parser.options[:output],
                                                     :logger => self.parser.options[:logger],
                                                     :logger_level => self.parser.options[:logger_level]

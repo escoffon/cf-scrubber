@@ -1,0 +1,24 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/usda/script/print_national_forests'
+
+class NationalForests < Cf::Scrubber::USDA::Script::PrintNationalForests
+  class Parser < Cf::Scrubber::USDA::Script::PrintNationalForests::Parser
+    def initialize()
+      rv = super()
+      p = self.parser
+
+      p.banner = "Usage: usfs_national_forests_db [options]\n\nExtracts National Forest entries from the RIDB database"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(Parser.new)
+  end
+end
+
+script = NationalForests.new()
+script.parser.parse(ARGV)
+script.list_national_forests

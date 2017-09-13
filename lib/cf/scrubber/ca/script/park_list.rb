@@ -2,10 +2,11 @@ require 'optparse'
 require 'logger'
 require 'cf/scrubber'
 require 'cf/scrubber/ca/script'
+require 'cf/scrubber/script/campground_list'
 
 module Cf
   module Scrubber
-    module Ca
+    module CA
       module Script
         # Framework class for extracting the park list.
 
@@ -13,7 +14,7 @@ module Cf
           # A class to parse command line arguments.
           #
           # This class defines the following options:
-          # - *-n* (*--no-details*) to have the script not load campground details.
+          # - <tt>-n</tt> (<tt>--no-details</tt>) to have the script not load campground details.
 
           class Parser < Cf::Scrubber::Script::CampgroundList::Parser
             # Initializer.
@@ -37,11 +38,11 @@ module Cf
           # web site, and yields to the block.
           #
           # @yield [sp, act] passes the following arguments to the block:
-          #  - *sp* is the active instance of {Cf::Scrubber::Ca::StateParks}.
+          #  - *sp* is the active instance of {Cf::Scrubber::CA::StateParks}.
           #  - *pd* is a hash containing data for a park.
 
           def process(&blk)
-            sp = Cf::Scrubber::Ca::StateParks.new(nil, {
+            sp = Cf::Scrubber::CA::StateParks.new(nil, {
                                                     :output => self.parser.options[:output],
                                                     :logger => self.parser.options[:logger],
                                                     :logger_level => self.parser.options[:logger_level]

@@ -9,7 +9,7 @@ module Cf
   module Scrubber
     # The namespace for scrubbers for OR sites.
 
-    module Or
+    module OR
       # Scrubber for state park system campgrounds.
       # This scrubber walks the Oregon State Park System web site to extract information about campgrounds.
 
@@ -154,7 +154,7 @@ module Cf
         # Initializer.
         #
         # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
-        #  value of {Cf::Scrubber::Or::StateParks::ROOT_URL}
+        #  value of {Cf::Scrubber::OR::StateParks::ROOT_URL}
         # @param opts [Hash] Additional configuration options for the scrubber.
         #  See {Cf::Scrubber::Base#initializer}.
 

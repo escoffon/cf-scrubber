@@ -12,7 +12,7 @@ module Cf
   module Scrubber
     # The namespace for scrubbers for CO sites.
 
-    module Co
+    module CO
       # Scrubber for state park system campgrounds.
       # This scrubber walks the Colorado State Park System web site to extract information about campgrounds.
 

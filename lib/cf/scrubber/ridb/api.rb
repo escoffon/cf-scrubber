@@ -61,6 +61,9 @@ module Cf::Scrubber::RIDB
     # @!visibility private
     ROOT_CAMPSITES = '/campsites'
 
+    # The organization ID for the US Forest Service.
+    ORGID_USFS = 131
+
     # The organization ID for the National Park Service.
     ORGID_NPS = 128
 
@@ -154,7 +157,7 @@ module Cf::Scrubber::RIDB
     # Get the list of activities.
     #
     # @param [Hash] params A hash of parameters for the API call.
-    #  Supports the parameters *limit*, *offset8, and *query* (searches on activity name).
+    #  Supports the parameters *limit*, *offset*, and *query* (searches on activity name).
     #
     # @return Returns an array of hashes containing activity descriptors.
 

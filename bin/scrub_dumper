@@ -1,0 +1,24 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/script/dumper'
+
+class ScrubDumper < Cf::Scrubber::Script::Dumper
+  class Parser < Cf::Scrubber::Script::Processor::Parser
+    def initialize()
+      rv = super()
+
+      p = self.parser
+      p.banner = "Usage: scrub_dumper [options]\n\nParse and dump a scrub file."
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(Parser.new)
+  end
+end
+
+script = ScrubDumper.new()
+script.parser.parse(ARGV)
+script.dump_file

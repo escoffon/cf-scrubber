@@ -1,0 +1,24 @@
+#! /usr/bin/env ruby
+
+require 'cf/scrubber/ridb/script/forest_query'
+
+class ForestQuery < Cf::Scrubber::RIDB::Script::ForestQuery
+  class Parser < Cf::Scrubber::RIDB::Script::ForestQuery::Parser
+    def initialize()
+      rv = super()
+      p = self.parser
+
+      p.banner = "Usage: ridb_forest_query [options]\n\nRuns a query in the RIDB database"
+
+      rv
+    end
+  end
+
+  def initialize()
+    super(Parser.new)
+  end
+end
+
+script = ForestQuery.new()
+script.parser.parse(ARGV)
+script.run_query

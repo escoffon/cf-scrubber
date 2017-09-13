@@ -29,5 +29,7 @@ doc/out
 *.log
 *.dat
 
-# Ignore scrub files
+# Ignore scrub and dump files
 *.scrub
+*.dump
+

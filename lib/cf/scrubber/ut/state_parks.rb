@@ -12,7 +12,7 @@ module Cf
   module Scrubber
     # The namespace for scrubbers for UT sites.
 
-    module Ut
+    module UT
       # Scrubber for state park system campgrounds.
       # This scrubber walks the Utah State Park System web site to extract information about campgrounds.
 
@@ -54,7 +54,7 @@ module Cf
         # Initializer.
         #
         # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
-        #  value of {Cf::Scrubber::Usda::NationalForestService::ROOT_URL}
+        #  value of {Cf::Scrubber::UT::StateParks::ROOT_URL}
         # @param opts [Hash] Additional configuration options for the scrubber.
         #  See {Cf::Scrubber::Base#initializer}.
 
@@ -71,7 +71,7 @@ module Cf
 
         # Build the park list from the contents of the park list selector in the main page.
         # Note that this method loads just minimal data, and clients will have to call
-        # {#extract_types} and {#extract_park_details} in order to have a fully populated set.
+        # {#extract_park_details} in order to have a fully populated set.
         #
         # This list includes all parks in the UT State Parks system, including those that may not provide
         # campground facilities.
@@ -771,260 +771,6 @@ module Cf
         def has_rv_sites?(reservation_url)
           ra = Cf::Scrubber::ReserveAmerica.new(reservation_url, { logger: self.logger })
           ra.has_rv_sites?()
-        end
-
-        #   rootmenu = doc.css("#sideNavBox ul.root").first
-        #   n = doc.css("#cpw_parkpage div.article-left div.article-header div.cpw_pagetitle").first
-        #   if n
-        #     rv[:name] = n.text().strip
-        #   else
-        #     # here we could try looking it up in the left sidebar (rootmenu)
-        #   end
-
-        #   if rootmenu
-        #     navmenu = rootmenu.css("ul.static").first
-        #     if navmenu
-        #       loc = extract_location(navmenu, ldata)
-        #       rv[:location] = loc unless loc.nil?
-        #     end
-        #   end
-
-        #   reservation_url = extract_reservation_url(navmenu, ldata)
-        #   rv[:reservation_uri] = reservation_url unless reservation_url.nil?
-
-        #   facilities = extract_facilities(navmenu, ldata)
-        #   if facilities.nil?
-        #     self.logger.warn { "no facilities found in (#{ldata[:region]}) (#{ldata[:area]}) (#{ldata[:name]})" }
-        #   else
-        #     rv[:facilities] = facilities.join(', ')
-        #   end
-
-        #   activities = extract_activities(navmenu, ldata)
-        #   if activities.nil?
-        #     self.logger.warn { "no activities found in (#{ldata[:region]}) (#{ldata[:area]}) (#{ldata[:name]})" }
-        #   else
-        #     rv[:activities] = activities.join(', ')
-        #   end
-
-        #   # from activities and facilities, we can figure out what accommodations
-        #   # the park supports, except that it's impossible to figure out if RV camping is supported
-        #   # (which it mostly is in the parks).
-        #   # To do that, possibly our best bet is to look into reserveamerica.
-
-        #   types = [ ]
-
-        #   # first, we use activities to pick up types based on the activity (obviously...)
-        #   # We do this first because we then check if facilities contain a corresponding facility.
-        #   # For example, a park may list "Camping" in the activities, but only to say that camping is
-        #   # NOT allowed (El Dorado Canyon, for example).
-        #   # This may cause types to be added when they should not be; we'll try to fix that in the facilities
-        #   # loop, later
-
-        #   if activities
-        #     CAMPGROUND_ACTIVITIES.each do |tk, tv|
-        #       types << tk if ((activities & tv).count > 0) && !types.include?(tk)
-        #     end
-        #   end
-
-        #   if facilities
-        #     # first of all, try to remove spurious types (see comments above).
-        #     # we do this by looking at facilities that are necessary for each type: if none are present,
-        #     # then we remove that type
-        #     #
-        #     # This is still not perfect, because some parks list "group camping" as an activity and describe
-        #     # a group campground area, but then don't list "group campground" in the facilities, and they
-        #     # should. But we'll deal with this later.
-
-        #     tl = types.select do |t|
-        #       # if the intersection between the available facilities and the required facilities is not empty,
-        #       # there does seem to be a required facility available, so we keep the type
-              
-        #       (CAMPGROUND_FACILITIES[t] & facilities).count > 0
-        #     end
-        #     types = tl
-
-        #     # Now we can add types based on the facilities
-
-        #     CAMPGROUND_FACILITIES.each do |tk, tv|
-        #       types << tk if ((facilities & tv).count > 0) && !types.include?(tk)
-        #     end
-        #   end
-
-        #   # If there is reservation URL, and there are types listed, let's see if the park supports RVs. 
-        #   # Unfortunately there does not seem to be a way to gather thatother than by reading the facilites
-        #   # descriptions. However, with the reservation URl we can try hitting reserveamerica and ask for
-        #   # RV sites
-
-        #   if (types.count > 0) && !reservation_url.nil?
-        #     types << Cf::Scrubber::Base::TYPE_RV if has_rv_sites?(reservation_url)
-        #   end
-
-        #   rv[:types] = types
-
-        #   rv
-        # end
-
-        def xx_find_menu_item(navmenu, label, cpd)
-          if label.is_a?(Array)
-            ll = label[0, label.count-1]
-            pg = label.last
-          else
-            ll = [ label ]
-            pg = nil
-          end
-
-          navmenu.css('li a').each do |n|
-            sn = n.css('span span').first
-            if sn
-              txt = sn.text().strip
-              ll.each do |l|
-                return adjust_href(n['href'], cpd[:uri]) if txt == l
-              end
-            end
-          end
-
-          (pg.nil?) ? nil : adjust_href(pg, cpd[:uri])
-        end
-
-        def xx_extract_location(navmenu, cpd)
-          url = find_menu_item(navmenu, MAP_MENU, cpd)
-          if url
-            doc = get_park_page(url)
-            iframe = doc.css('div.article-content iframe').first
-            if iframe
-              src_uri = URI::parse(iframe['src'])
-              qp = src_uri.query.split('&').find { |p| p.start_with?('pb=') }
-              if qp
-                ll = qp.split('!').select { |p| p.start_with?('2d') || p.start_with?('3d') }
-                if ll.count == 2
-                  # 2d is longitude, 3d latitude
-
-                  if ll.first.start_with?('2d')
-                    lat = ll.last[2,ll.last.length]
-                    lon = ll.first[2,ll.first.length]
-                  else
-                    lat = ll.first[2,ll.first.length]
-                    lon = ll.last[2,ll.last.length]
-                  end
-
-                  return { lat: lat, lon: lon }
-                end
-              end
-            end
-          end
-
-          nil
-        end
-
-        def xx_detail_ok?(nli, f, details)
-          fac = details[f]
-          return false if fac.nil?
-
-          if fac.has_key?(:no)
-            desc = nli.css('div.description > div').first.text()
-            fac[:no].each do |re|
-              return false if desc =~ re
-            end
-          end
-             
-          true
-        end
-
-        def xx_extract_details(label, details, navmenu, cpd)
-          flist = nil
-          url = find_menu_item(navmenu, label, cpd)
-          if url
-            doc = get_park_page(url)
-            if doc
-              flist = [ ]
-              doc.css('div#mainbody div.article-content ul.dfwp-list li').each do |nli|
-                nh2 = nli.css('h2').first
-                if nh2
-                  f = nh2.text().strip
-                  if details.has_key?(f)
-                    flist << f if detail_ok?(nli, f, details)
-                  else
-                    self.logger.warn { "unknown detail (#{label}) '#{f}' in (#{cpd[:region]}) (#{cpd[:area]}) (#{cpd[:name]})" }
-                  end
-                end
-              end
-            end
-          end
-
-          flist
-        end
-
-        def xx_extract_facilities(navmenu, cpd, label = FACILITIES_MENU)
-          extract_details(label, FACILITIES, navmenu, cpd)
-        end
-
-        def xx_extract_activities(navmenu, cpd, label = ACTIVITIES_MENU)
-          extract_details(label, ACTIVITIES, navmenu, cpd)
-        end
-
-        def xx_extract_reservation_url(navmenu, cpd)
-          url = find_menu_item(navmenu, CAMPING_MENU, cpd)
-          if url
-            doc = get_park_page(url)
-            if doc
-              doc.css('#cpw_zone-sidebar2 a').each do |na|
-                # we rely on the fact that the park system uses reserveamerica for their reservations
-                if na['href'] =~ /reserveamerica/
-                  # we accept a reservation URL only if it contains a query string (which we assume contains
-                  # the contractCode and parkId)
-
-                  ruri = URI.parse(na['href'])
-                  return na['href'] unless ruri.query.nil?
-                end
-              end
-            end
-          end
-
-          nil
-        end
-
-        RESERVEAMERICA_CAMPSITE_SEARCH_PATH = '/campsiteSearch.do'
-
-        def xx_has_rv_sites?(reservation_url)
-          puri = URI.parse(reservation_url)
-          surl = "https://#{puri.host}#{RESERVEAMERICA_CAMPSITE_SEARCH_PATH}?#{puri.query}"
-
-          # 2001 is the code for RV sites
-          # parkId and contractCode should come from the reservation URL
-
-          params = {
-            siteType: 2001,
-            loop: nil,
-            csite: nil,
-            eqplen: nil,
-            maxpeople: nil,
-            hookup: nil,
-            range: 1,
-            arvdate: nil,
-            enddate: nil,
-            lengthOfStay: nil,
-            siteTypeFilter: 'ALL',
-            submitSiteForm: true,
-            search: 'site',
-            currentMaximumWindow: 12
-          }
-
-          puri.query.split('&') do |q|
-            qk, qv = q.split('=')
-            params[qk.to_sym] = qv
-          end
-
-          res = post(surl, params, {
-                       headers: {
-                         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-                       }
-                     })
-          if res.is_a?(Net::HTTPOK)
-            doc = Nokogiri::HTML(res.body)
-            return (doc.css('#csiterst table#shoppingitems').first.nil?) ? false : true
-          end
-
-          false
         end
       end
     end

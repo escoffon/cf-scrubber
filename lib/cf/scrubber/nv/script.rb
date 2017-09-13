@@ -1,6 +1,6 @@
 module Cf
   module Scrubber
-    module Nv
+    module NV
       # The namespace for framework classes to implement various NV State Park scripts.
 
       module Script

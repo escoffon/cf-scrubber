@@ -8,8 +8,9 @@ module Cf::Scrubber
                   'nps_campgrounds', 'nps_rec_areas',
                   'nv_parks_activities', 'nv_parks_list',
                   'or_parks_list',
-                  'ridb_activities', 'ridb_organizations',
-                  'usda_nfs_campgrounds', 'usda_nfs_forests', 'usda_nfs_states',
+                  'ridb_activities', 'ridb_forest_query', 'ridb_organizations', 'ridb_rec_areas',
+                  'scrub_checker', 'scrub_dumper',
+                  'usfs_campgrounds', 'usfs_forests', 'usfs_states',
                   'ut_parks_list' ]
 
     desc <<-DESC

@@ -10,7 +10,7 @@ module Cf
   module Scrubber
     # The namespace for scrubbers for NC sites.
 
-    module Nc
+    module NC
       # Scrubber for state park system campgrounds.
       # This scrubber walks the North Carolina State Park System web site to extract information about
       # campgrounds.
@@ -208,7 +208,7 @@ module Cf
         # Initializer.
         #
         # @param root_url [String] The root URL for the web site to scrub; if not defined, it uses the
-        #  value of {Cf::Scrubber::Nc::StateParks::ROOT_URL}
+        #  value of {Cf::Scrubber::NC::StateParks::ROOT_URL}
         # @param opts [Hash] Additional configuration options for the scrubber.
         #  See {Cf::Scrubber::Base#initializer}.
 

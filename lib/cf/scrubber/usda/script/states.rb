@@ -5,7 +5,7 @@ require 'cf/scrubber/usda/script'
 
 module Cf
   module Scrubber
-    module Usda
+    module USDA
       module Script
         # Framework class for iterating through the states with national forests or grasslands.
 
@@ -23,19 +23,19 @@ module Cf
           # over each, yielding to the block provided.
           #
           # @yield [nfs, s, idx] passes the following arguments to the block:
-          #  - *nfs* is the active instance of {Cf::Scrubber::Usda::NationalForestService}.
+          #  - *usfs* is the active instance of {Cf::Scrubber::USDA::USFS}.
           #  - *s* is the state name.
           #  - *idx* is the corresponding state identifier.
 
           def process(&blk)
-            nfs = Cf::Scrubber::Usda::NationalForestService.new(nil, {
-                                                                  :output => self.parser.options[:output],
-                                                                  :logger => self.parser.options[:logger],
-                                                                  :logger_level => self.parser.options[:logger_level]
-                                                                })
-            s = nfs.states
+            usfs = Cf::Scrubber::USDA::USFS.new(nil, {
+                                                  :output => self.parser.options[:output],
+                                                  :logger => self.parser.options[:logger],
+                                                  :logger_level => self.parser.options[:logger_level]
+                                                })
+            s = usfs.states
             s.keys.sort.each do |sk|
-              blk.call(nfs, sk, s[sk])
+              blk.call(usfs, sk, s[sk])
             end
           end
         end

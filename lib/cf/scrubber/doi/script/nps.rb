@@ -1,4 +1,4 @@
-require 'cf/scrubber/doi'
+require 'cf/scrubber/doi/nps'
 require 'cf/scrubber/script'
 
 module Cf::Scrubber::DOI::Script

@@ -1,6 +1,6 @@
 module Cf
   module Scrubber
-    module Ut
+    module UT
       # The namespace for framework classes to implement various UT State Park scripts.
 
       module Script

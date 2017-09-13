@@ -1,6 +1,6 @@
 module Cf
   module Scrubber
-    module Nc
+    module NC
       # The namespace for framework classes to implement various NC State Park scripts.
 
       module Script

@@ -4,6 +4,7 @@ require 'logger'
 require 'cf/scrubber'
 require 'cf/scrubber/doi/script/nps'
 require 'cf/scrubber/states_helper'
+require 'cf/scrubber/script/campground_list'
 
 module Cf::Scrubber::DOI::Script::NPS
   # Framework class for iterating through campgrounds for various states.
@@ -14,9 +15,13 @@ module Cf::Scrubber::DOI::Script::NPS
     # A class to parse command line arguments.
     #
     # The base class defines the following options:
-    # - *-sSTATES* (*--states=STATES*) to set the list of states for which to list campgrounds.
-    # - *-aREC_AREAS* (*--rec-areas=REC_AREAS*) to set the list of rec areas for which to list campgrounds.
-    # - *-SSTATEFORMAT* (*--state-format=STATEFORMAT*) is the output format to use for the state name.
+    # - <tt>-s STATES</tt> (<tt>--states=STATES</tt>) to set the list of states for which to list campgrounds.
+    #   If not provided, all states are processed.
+    # - <tt>-a REC_AREAS</tt> (<tt>--rec-areas=REC_AREAS</tt>) to set the list of rec areas for which to
+    #   list campgrounds. If not provided, all rec areas are processed.
+    # - <tt>-S STATEFORMAT</tt> (<tt>--state-format=STATEFORMAT</tt>) is the output format to use for the
+    #   state name. Vaid formats are: +full+ for full state name, +short+ for two-letter state codes.
+    #   Defaults to +full+.
 
     class Parser < Cf::Scrubber::Script::CampgroundList::Parser
       # The known (and supported) state formats.

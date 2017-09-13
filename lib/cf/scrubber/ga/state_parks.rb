@@ -11,7 +11,7 @@ module Cf
   module Scrubber
     # The namespace for scrubbers for GA sites.
 
-    module Ga
+    module GA
       # Scrubber for state park system campgrounds.
       # This scrubber walks the Georgia State Park System web site to extract information about campgrounds.
 

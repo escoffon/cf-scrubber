@@ -1,6 +1,6 @@
 module Cf
   module Scrubber
-    module Ga
+    module GA
       # The namespace for framework classes to implement various GA State Park scripts.
 
       module Script
