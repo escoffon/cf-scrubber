@@ -1210,7 +1210,11 @@ module Cf
                   h3_current = g
                 elsif g.name == 'div'
                   g.css('h4').each do |ah4|
-                    activities << ah4.text()
+                    # We skip headers that end with a colon, since those are likely titles for
+                    # a subsection (as in 'General Info:')
+
+                    txt = ah4.text().strip
+                    activities << txt unless txt =~ /:$/
                   end
                 end
               end
