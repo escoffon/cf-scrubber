@@ -11,6 +11,5 @@ end
 
 require 'cf/scrubber/script'
 
-require 'cf/scrubber/ga/script/activities'
 require 'cf/scrubber/ga/script/park_list'
 

@@ -32,12 +32,6 @@ Colorado State Park System:
 
 Georgia State Park System:
 
-- ga_parks_activities
-  Lists activities for GA state parks
-    -l, --log-file=FILE              The file to use for the logger. If not present, use STDERR
-    -v, --verbosity=LEVEL            Set the logger level; this is one of the level constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
-    -?                               Show help
-
 - ga_parks_list
   List GA state parks
     -A, --all                        If present, all parks are listed; otherwise only those with campgrounds are listed.

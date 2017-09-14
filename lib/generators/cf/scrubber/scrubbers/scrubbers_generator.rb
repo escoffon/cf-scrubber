@@ -3,7 +3,7 @@ module Cf::Scrubber
     README = 'README.txt'
     SCRUBBERS = [ 'ca_parks_activities', 'ca_parks_list',
                   'co_parks_list',
-                  'ga_parks_activities', 'ga_parks_list',
+                  'ga_parks_list',
                   'nc_parks_list',
                   'nps_campgrounds', 'nps_rec_areas',
                   'nv_parks_activities', 'nv_parks_list',
