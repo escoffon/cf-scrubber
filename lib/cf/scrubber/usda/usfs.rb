@@ -1185,7 +1185,7 @@ module Cf
                     else
                       self.logger.warn("unsupported at-a-glance key '#{ths}' for campground (#{campground[:state]}) (#{campground[:forest]}) (#{campground[:name]})")
                     end
-                    h[s] = td.inner_html().strip
+                    h[s] = adjust_link_targets(td)
                   end
                   break
                 end
@@ -1195,6 +1195,13 @@ module Cf
           end
 
           h
+        end
+
+        def adjust_link_targets(node)
+          node.css('a').each do |an|
+            an['target'] = '_blank'
+          end
+          node.inner_html().strip
         end
 
         def extract_activities_details(doc, campground)
