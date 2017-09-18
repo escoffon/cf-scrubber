@@ -19,7 +19,11 @@ module Cf::Scrubber::Script
         self.output.print("  -- Details page: #{cd[:uri]}\n")
         self.output.print("  -- Accommodation types: #{cd[:types].join(', ')}\n")
         if cd.has_key?(:location)
-          self.output.print("  -- Location: #{cd[:location][:lat]} #{cd[:location][:lon]}\n")
+          if cd[:location].is_a?(Hash)
+            self.output.print("  -- Location: #{cd[:location][:lat]} #{cd[:location][:lon]}\n")
+          else
+            self.output.print("  -- Location: #{cd[:location]}\n")
+          end
         else
           self.output.print("  -- Location: no location defined\n")
         end

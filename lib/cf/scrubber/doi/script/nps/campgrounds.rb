@@ -126,11 +126,11 @@ module Cf::Scrubber::DOI::Script::NPS
         exit(1)
       end
 
-      nps = Cf::Scrubber::DOI::NationalParkService.new(nil, {
-                                                         :output => self.parser.options[:output],
-                                                         :logger => self.parser.options[:logger],
-                                                         :logger_level => self.parser.options[:logger_level]
-                                                       })
+      nps = Cf::Scrubber::DOI::NPS.new(nil, {
+                                         :output => self.parser.options[:output],
+                                         :logger => self.parser.options[:logger],
+                                         :logger_level => self.parser.options[:logger_level]
+                                       })
 
       rec_areas = self.parser.options[:rec_areas]
 
