@@ -598,6 +598,7 @@ module Cf
                                 'EQUESTRIAN NONELECTRIC',
                                 'PARKING',
                                 'CABIN NONELECTRIC',
+                                'CABIN ELECTRIC',
                                 'BOAT IN',
                                 'HIKE TO',
                                 'GROUP HIKE TO',
@@ -669,6 +670,7 @@ module Cf
           #  EQUESTRIAN NONELECTRIC - horse trailer
           #  PARKING - parking slot
           #  CABIN NONELECTRIC - a cabin
+          #  CABIN ELECTRIC - a cabin
           #  BOAT IN - not sure, but something where you can keep your boat nearby
           #  HIKE TO - not sure
           #  WALK TO - not sure
