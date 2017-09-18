@@ -139,11 +139,19 @@ module Cf
               forests = if self.parser.options[:forests].is_a?(Array)
                           self.parser.options[:forests]
                         else
-                          Cf::Scrubber::USDA::USFSHelper.forests_for_state(s)
+                          Cf::Scrubber::USDA::USFSHelper.forests_for_state(s).keys
                         end
               fdl, unresolved = Cf::Scrubber::USDA::USFSHelper.convert_forest_descriptors(forests)
               unresolved.each do |u|
                 self.logger.warn { "unresolved forest chain: #{u.join(', ')}" }
+              end
+
+              # If the initial forest list and the resolved descriptors don't match, let's issue a
+              # warning, since the discrepancy may be the consequence of misconfigured registry entries.
+
+              fdl_names = fdl.map { |f| f[:name] }
+              if !compare_forests(forests, fdl_names)
+                self.logger.warn { "requested forests (#{forests.sort.join(', ')}) and resolved forests (#{fdl_names.sort.join(', ')}) differ" }
               end
 
               (fdl.sort { |fd1, fd2| fd1[:name] <=> fd2[:name] }).each do |f|
@@ -153,6 +161,17 @@ module Cf
                 end
               end
             end
+          end
+
+          private
+
+          def compare_forests(forests, fdl_names)
+            fs = forests.sort
+            ds = fdl_names.sort
+            d1 = fs - ds
+            d2 = ds - fs
+
+            ((d1.count + d2.count) == 0) ? true : false
           end
         end
       end

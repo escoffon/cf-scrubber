@@ -1017,14 +1017,27 @@ module Cf
           if forest_id.is_a?(Hash)
             # if neither :label nor :container_label is present, this is not a USFS URL (typically it is
             # a wilderness URL) and therefore we can skip it
+            # But we see if the URL fits the NF/NG pattern a,d if so we attempt to extract the label
+            # (but we do issue a warning, because the descripto should contain the :label)
 
-            if forest_id[:label] || forest_id[:container_label]
+            label = nil
+            if !forest_id[:label] && !forest_id[:container_label]
+              if Cf::Scrubber::USDA::USFSHelper.forest_home_url?(forest_id[:url])
+                label = Cf::Scrubber::USDA::USFSHelper.extract_label(forest_id[:url])
+                self.logger.warn { "forest descriptor for (#{forest_id[:name]}) contains neither :label, nor :container_label, but :url fits NF/NG pattern; using label (#{label})" }
+              else
+                self.logger.warn { "forest descriptor for (#{forest_id[:name]}) contains neither :label, nor :container_label: skipping" }
+              end
+            else
+              label = (forest_id[:container_label]) ? forest_id[:container_label] : forest_id[:label]
+            end
+
+            if label
               # A hash contains all the information we need to generate the URLs; there is no need to
               # scrub HTML code
 
               types.each do |t|
-                url = "http://#{Cf::Scrubber::USDA::USFSHelper::USFS_WEB_SITE_HOST}/activity/"
-                url += (forest_id[:container_label]) ? forest_id[:container_label] : forest_id[:label]
+                url = "http://#{Cf::Scrubber::USDA::USFSHelper::USFS_WEB_SITE_HOST}/activity/#{label}"
                 url += "/recreation/camping-cabins/?recid=#{forest_id[:usfs_id]}&actid=#{CAMPGROUND_TYPES[t][:actid]}"
                 urls[t] = url
               end

@@ -86,6 +86,19 @@ module Cf::Scrubber::USDA
       USFS_NATIONAL_FORESTS
     end
 
+    # Given a URL, check if it fits the pattern for a national forest's home page.
+    # The home page URLs for national forests or grasslands have the form 
+    # <tt>&lt;USFS root&gt;/&lt;label&gt;</tt>, where <tt>&lt;USFS root&gt;</tt> is the address of the
+    # USFS web site, and <tt>&lt;label&gt;</tt> is a unique string that identifies the entity.
+    #
+    # @param url [String] The URL to check.
+    #
+    # @return [Boolean] Returns +true+ if _url_ fits the pattern, +false+ otherwise.
+
+    def self.forest_home_url?(url)
+      url && (url =~ USFS_WEB_SITE_RE)
+    end
+
     # Given a USFS URL for a national forest's home page, extract the associated label.
     # The home page URLs for national forests or grasslands have the form 
     # <tt>&lt;USFS root&gt;/&lt;label&gt;</tt>, where <tt>&lt;USFS root&gt;</tt> is the address of the
@@ -177,7 +190,7 @@ module Cf::Scrubber::USDA
             # at least some were not found: we need to add this to the list of unresolved
 
             u << r
-            unresolved.concat(u)
+            unresolved << u
           end
 
           descriptors.concat(nd)
@@ -185,7 +198,8 @@ module Cf::Scrubber::USDA
         else
           # not found: we need to add this to the list of unresolved
 
-          unresolved.concat(u)
+          u << r
+          unresolved << u
         end
       end
 
@@ -3501,10 +3515,10 @@ module Cf::Scrubber::USDA
         label: 'ctnf',
         url: 'http://www.fs.usda.gov/ctnf'
       },
-      #-- contained in 'Wallowa Whitman National Forest'
+      #-- contained in 'Wallowa-Whitman National Forest'
       'Hells Canyon National Recreational Area' => {
         name: 'Hells Canyon National Recreational Area',
-        remap: 'Wallowa Whitman National Forest',
+        remap: 'Wallowa-Whitman National Forest',
         ridb_id: 1113,
         usfs_id: 51353,
         url: 'http://www.fs.usda.gov/wallowa-whitman'
@@ -3562,9 +3576,10 @@ module Cf::Scrubber::USDA
       },
       #-- added by hand; found it in rec areas
       'Wallowa-Whitman National Forest' => {
-        name: 'Wallowa Whitman National Forest',
+        name: 'Wallowa-Whitman National Forest',
         ridb_id: 1113,
         usfs_id: 51353,
+        label: 'wallowa-whitman',
         url: 'http://www.fs.usda.gov/wallowa-whitman'
       },
 
