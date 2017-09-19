@@ -381,7 +381,8 @@ module Cf
 
         # @!visibility private
 
-        ADDITIONAL_INFO_KEYS = [ :amenities, :closest_towns, :hours_of_operation, :information_center,
+        ADDITIONAL_INFO_KEYS = [ :amenities, :amenities_details,
+                                 :closest_towns, :hours_of_operation, :information_center,
                                  :open_season, :rentals_and_guides, :reservations, :restrictions, :restroom,
                                  :water ]
 
@@ -826,6 +827,7 @@ module Cf
 
             dh[:at_a_glance] = extract_at_a_glance_details(doc, campground)
             activities = extract_activities_details(doc, campground)
+            amenities = extract_amenities_details(doc, campground)
 # still needs some work
 #            dh[:blurb] = extract_blurb_details(doc, campground)
             dh[:location] = {}
@@ -840,6 +842,7 @@ module Cf
 
             dh[:additional_info] = convert_at_a_glance_details(dh[:at_a_glance], doc, campground)
             dh[:additional_info][:activities] = activities.join(', ') if activities.length > 0
+            dh[:additional_info][:amenities_details] = JSON.generate(amenities) if amenities.count > 0
           else
             self.logger.warn { "get_campground_details((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]})) gets #{res}" }
           end
@@ -1243,6 +1246,30 @@ module Cf
           end
 
           activities
+        end
+
+        def extract_amenities_details(doc, campground)
+          amenities = { }
+          doc.css("div#centercol td > h2").each do |n|
+            if n.text() == 'Amenities'
+              d = n
+              while true do
+                d = d.next_sibling()
+                break if d.nil?
+                if d.name == 'div'
+                  d.css('table tr').each do |tr|
+                    k = tr.css('th')[0].text().strip
+                    amenities[k] = adjust_link_targets(tr.css('td')[0]).strip
+                  end
+
+                  break
+                end
+              end
+              break
+            end
+          end
+
+          amenities
         end
 
         def extract_blurb_details(doc, campground)
