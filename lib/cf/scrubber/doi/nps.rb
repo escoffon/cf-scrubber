@@ -309,7 +309,7 @@ module Cf
             state = get_state_name(@rec_area_to_state[rakey])
             state = '' if state.nil?
 
-            types = types_for_campground(fac, ra)
+            types, permitted, campsite_count = types_for_campground(fac, ra)
             if types.count < 1
               self.logger.warn { "no types for (#{ra['RecAreaName']}) (#{fac['FacilityName']}) - skipping campground" }
               next
@@ -357,6 +357,11 @@ module Cf
               ai[:activities] = (fac['ACTIVITY'].map { |a| a['FacilityActivityDescription'] }).join(', ')
             end
             
+            ai[:campsite_count] = campsite_count if campsite_count > 0
+            if permitted.count > 0
+              ai[:permitted_equipment] = (permitted.keys.sort.map { |pk| "#{pk} (#{permitted[pk]})" }).join(', ')
+            end
+
             c[:additional_info] = ai
 
             rv << c
@@ -600,11 +605,12 @@ module Cf
                                 'CABIN NONELECTRIC',
                                 'CABIN ELECTRIC',
                                 'BOAT IN',
+                                'GROUP BOAT IN',
                                 'HIKE TO',
                                 'GROUP HIKE TO',
                                 'WALK TO',
-                                'MANAGEMENT',
-                                
+                                'GROUP WALK TO',
+                                'MANAGEMENT'
                                ]
         FACILITY_CAMPING = 'Camping'
 
@@ -671,9 +677,9 @@ module Cf
           #  PARKING - parking slot
           #  CABIN NONELECTRIC - a cabin
           #  CABIN ELECTRIC - a cabin
-          #  BOAT IN - not sure, but something where you can keep your boat nearby
-          #  HIKE TO - not sure
-          #  WALK TO - not sure
+          #  BOAT IN - not sure, but sounds like you have to use a boat to get there
+          #  HIKE TO - not sure, but sounds like you hike to get there
+          #  WALK TO - not sure, but sounds like you walk (shorter hike?) to get there
           #  MANAGEMENT - not sure
           # To determine list of types:
           # - TENT ONLY adds :standard
@@ -683,7 +689,13 @@ module Cf
           # - EQUESTRIAN adds :standard (at some point we may make it add :horse)
           # - PARKING adds nothing
           # - CABIN adds :cabin
+          # - BOAT IN, HIKE TO, WALK TO adds :standard
+          # - GROUP (BOAT IN)|(HIKE TO)|(WALK TO) adds :group
+          # 
+          # And as long as we are at it, we can collect the list of permitted equipment, to display in
+          # additional info.
 
+          permitted = { }
           site_types = { }
           unknown = { }
           campsites = ridb.campsites_for_facility(fac['FacilityID'])
@@ -696,6 +708,17 @@ module Cf
                 unless unknown.has_key?(t)
                   self.logger.warn { "unknown CampsiteType (#{t}) for facility (#{ra['RecAreaName']}) (#{fac['FacilityName']})" }
                   unknown[t] = true
+                end
+              end
+            end
+
+            if cs['PERMITTEDEQUIPMENT']
+              cs['PERMITTEDEQUIPMENT'].each do |eqp|
+                e = eqp['EquipmentName']
+                if permitted[e]
+                  permitted[e] += 1
+                else
+                  permitted[e] = 1
                 end
               end
             end
@@ -722,15 +745,17 @@ module Cf
                 rv << Cf::Scrubber::Base::TYPE_CABIN unless rv.include?(Cf::Scrubber::Base::TYPE_CABIN)
               elsif t =~ /EQUESTRIAN/
                 rv << Cf::Scrubber::Base::TYPE_STANDARD unless rv.include?(Cf::Scrubber::Base::TYPE_STANDARD)
+              elsif t =~ /(BOAT IN)|(HIKE TO)|(WALK TO)/
+                rv << Cf::Scrubber::Base::TYPE_GROUP unless rv.include?(Cf::Scrubber::Base::TYPE_STANDARD)
               end
 
-              if t =~ /GROUP (TENT|STANDARD|EQUESTRIAN)/
+              if t =~ /GROUP (TENT)|(STANDARD)|(EQUESTRIAN)|(BOAT IN)|(HIKE TO)|(WALK TO)/
                 rv << Cf::Scrubber::Base::TYPE_GROUP unless rv.include?(Cf::Scrubber::Base::TYPE_GROUP)
               end
             end
           end
 
-          rv
+          [ rv, permitted, campsites.count ]
         end
       end
     end
