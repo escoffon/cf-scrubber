@@ -381,7 +381,7 @@ module Cf
 
         # @!visibility private
 
-        ADDITIONAL_INFO_KEYS = [ :amenities, :amenities_details,
+        ADDITIONAL_INFO_KEYS = [ :amenities, :amenities_details, :current_conditions,
                                  :closest_towns, :hours_of_operation, :information_center,
                                  :open_season, :rentals_and_guides, :reservations, :restrictions, :restroom,
                                  :water ]

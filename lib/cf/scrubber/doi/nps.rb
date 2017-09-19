@@ -746,7 +746,7 @@ module Cf
               elsif t =~ /EQUESTRIAN/
                 rv << Cf::Scrubber::Base::TYPE_STANDARD unless rv.include?(Cf::Scrubber::Base::TYPE_STANDARD)
               elsif t =~ /(BOAT IN)|(HIKE TO)|(WALK TO)/
-                rv << Cf::Scrubber::Base::TYPE_GROUP unless rv.include?(Cf::Scrubber::Base::TYPE_STANDARD)
+                rv << Cf::Scrubber::Base::TYPE_STANDARD unless rv.include?(Cf::Scrubber::Base::TYPE_STANDARD)
               end
 
               if t =~ /GROUP (TENT)|(STANDARD)|(EQUESTRIAN)|(BOAT IN)|(HIKE TO)|(WALK TO)/
