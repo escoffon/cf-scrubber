@@ -2,10 +2,10 @@ module Cf
   module Scrubber
     # The version number of the cf-scrubber gem.
 
-    VERSION = '0.12.3'
+    VERSION = '0.12.4'
 
     # The version date for the cf-scrubber gem.
 
-    DATE = '2017-09-19'
+    DATE = '2017-09-29'
   end
 end
