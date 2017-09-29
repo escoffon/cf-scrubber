@@ -6,6 +6,7 @@ require 'json'
 require 'logger'
 require 'cf/scrubber/base'
 require 'cf/scrubber/states_helper'
+require 'cf/scrubber/ridb/api'
 
 module Cf
   module Scrubber
@@ -396,6 +397,7 @@ module Cf
         def initialize(root_url = nil, opts = {})
           @states = nil
           @forests = {}
+          @ridb = Cf::Scrubber::RIDB::API.new(opts)
 
           root_url = ROOT_URL unless root_url.is_a?(String)
           super(root_url, opts)
@@ -1177,6 +1179,78 @@ module Cf
                 end
                 
               end
+            end
+          end
+
+          if h.count < 2
+            h = fish_ridb_facility(campground)
+          end
+
+          if h.count < 2
+            self.logger.warn { "could not resolve location for ((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]}))" }
+          end
+
+          h
+        end
+
+        def fish_ridb_facility(campground)
+          # unfortunately, facility names on the USFS web site and in RIDB are not neccarily the same;
+          # for example: "Calpine Fire Lookout" (USFS) is "CALPINE LOOKOUT" in RIDB, or
+          # "Prosser Family Campground" (USFS) is "PROSSER FAMILY" in RIDB.
+          # The consequence of this sad state of affairs is that an RIDB facility lookup using the
+          # USFS name may not return a record, and we have to be clever (and hope for the best...):
+          # 1. look up by the full USFS name; if we have a single hit, we assume we are done.
+          # 2. if no hit, shop off the last word and try again, until one of these conditions are met:
+          #    a. no more words: nothing found
+          #    b. multiple hits: currently, we give up
+          #    c. one hit: pray it's the right one...
+          #
+          # There is an additional twist: some forests are facilities rather than rec areas, so we cannot
+          # look up facilities within the rec area, and we have a somewhat iffier query.
+
+          forest_id = campground[:forest_id]
+          return {} unless forest_id.is_a?(Hash) && forest_id.has_key?(:ridb_id)
+
+          fac = nil
+          h = {}
+          state = get_state_code(campground[:state])
+          ra = @ridb.get_rec_area(forest_id[:ridb_id])
+          tokens = campground[:name].split(/\s+/)
+          while tokens.count > 0 do
+            flist = if ra
+                      @ridb.facilities_for_rec_area(ra['RecAreaID'], { query: tokens.join(' ') })
+                    else
+                      @ridb.facilities_for_organization(Cf::Scrubber::RIDB::API::ORGID_USFS, {
+                                                          state: state,
+                                                          query: tokens.join(' ')
+                                                        })
+                    end
+            case flist.count
+            when 0
+              # let's try again
+
+              tokens.pop
+            when 1
+              # got a single hit!
+
+              fac = flist.first
+              break
+            else
+              # give up
+
+              self.logger.warn { "too many location hits for ((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]}))" }
+              tokens = []
+            end
+          end
+
+          if fac
+            lat = fac['FacilityLatitude']
+            lon = fac['FacilityLongitude']
+            if lat.is_a?(Numeric) && lon.is_a?(Numeric)
+              # stringify for consistency with the page scrub
+
+              h = { lat: "#{lat}", lon: "#{lon}" }
+              self.logger.warn { "location for ((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]})) extracted from RIDB facility ((#{fac['FacilityID']}) (#{fac['FacilityName']}))" }
             end
           end
 
