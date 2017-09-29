@@ -1202,8 +1202,7 @@ module Cf
           # 1. look up by the full USFS name; if we have a single hit, we assume we are done.
           # 2. if no hit, shop off the last word and try again, until one of these conditions are met:
           #    a. no more words: nothing found
-          #    b. multiple hits: currently, we give up
-          #    c. one hit: pray it's the right one...
+          #    b. one or more hits: look for one that seems to work.
           #
           # There is an additional twist: some forests are facilities rather than rec areas, so we cannot
           # look up facilities within the rec area, and we have a somewhat iffier query.
@@ -1225,21 +1224,27 @@ module Cf
                                                           query: tokens.join(' ')
                                                         })
                     end
-            case flist.count
-            when 0
+            if flist.count < 1
               # let's try again
 
               tokens.pop
-            when 1
-              # got a single hit!
-
-              fac = flist.first
-              break
             else
-              # give up
+              # since the query looks in facility name, description, keywords,
+              # and stay limit, the results may or may not have matched because of the name.
+              # So we iterate over the results and compare the current query string with the name: if
+              # the query string appears in the name, we have a reasonable confidence that we have
+              # a match.
+              # But if the query string matches more that one name, we give up
 
-              self.logger.warn { "too many location hits for ((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]}))" }
-              tokens = []
+              re = Regexp.new(tokens.join('\s+'), Regexp::IGNORECASE)
+              t = flist.select { |f| f['FacilityName'] =~ re }
+              if t.count == 1
+                fac = t.first
+              elsif t.count > 1
+                self.logger.warn { "too many location hits for ((#{campground[:name]}) (#{campground[:state]}) (#{campground[:forest]}))" }
+              end
+
+              break
             end
           end
 
