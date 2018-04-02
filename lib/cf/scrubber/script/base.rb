@@ -120,11 +120,21 @@ module Cf
         # @param blk [Block] The block to pass to the processor.
 
         def exec(&blk)
-          setup_log
-          setup_output
-          process_init
-          process(&blk)
-          process_end
+          begin
+            setup_log
+            setup_output
+            process_init
+            process(&blk)
+            process_end
+          rescue => exc
+            self.logger.fatal("#-- Exception: #{exc.message}")
+            self.output.printf("#-- Exception: #{exc.message}\n")
+            exc.backtrace.each do |f|
+              bt = "#-- Backtrace: #{f}"
+              self.logger.fatal(bt)
+              self.output.printf("%s\n", bt)
+            end
+          end
         end
 
         protected
@@ -163,6 +173,8 @@ module Cf
             self.logger.level = lvl.split('::').inject(Object) { |o,c| o.const_get c }
           elsif lvl.is_a?(Integer)
             self.logger.level = lvl
+          else
+            self.logger.level = Logger::WARN
           end
         end
 
