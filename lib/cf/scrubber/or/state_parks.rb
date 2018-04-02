@@ -38,67 +38,63 @@ module Cf
 
         PARK_LIST_DATA_QUERY = 'method=json&cfc=parks.parksData&function=findParksByDistance'
 
-        # All activity codes and their names.
+        # All known activity names.
 
-        ACTIVITY_CODES = {
-          'ampitheater' => 'Ampitheater',
-          'beach' => 'Beach Access',
-          'beach-ada' => 'Beach Access (ADA)',
-          'bike' => 'Bike Path',
-          'bike-ada' => 'Bike Path (ADA)',
-          'boat' => 'Boat Ramp',
-          'boat-ada' => 'Boat Ramp (ADA)',
-          'cabin' => 'Cabin',
-          'cabin-ada' => 'Cabin (ADA)',
-          'camping' => 'Camping',
-          'camping-ada' => 'Camping (ADA)',
-          'dayuse' => 'Day-Use Fee',
-          'deluxecabin' => 'Deluxe Cabin',
-          'deluxecabin-ada' => 'Deluxe Cabin (ADA)',
-          'deluxeyurt-ada' => 'Deluxe Yurt (ADA)',
-          'disc' => 'Disc Golf',
-          'dump' => 'Dump Station',
-          'dump-ada' => 'Dump Station (ADA)',
-          'exhibit' => 'Exhibit Information',
-          'exhibit-ada' => 'Exhibit Information (ADA)',
-          'fishing' => 'Fishing',
-          'fishing-ada' => 'Fishing (ADA)',
-          'hiker' => 'Hiker Biker',
-          'hiking' => 'Hiking Trails',
-          'hiking-ada' => 'Hiking Trails (ADA)',
-          'horse' => 'Horse Trails',
-          'kayak' => 'Kayaking',
-          'marina' => 'Marina',
-          'pet' => 'Cabins/Yurts Pets OK',
-          'pet-ada' => 'Cabins/Yurts Pets OK (ADA)',
-          'picnic' => 'Picnicking',
-          'picnic-ada' => 'Picnicking (ADA)',
-          'pit' => 'Pit Toilets',
-          'pit-ada' => 'Pit Toilets (ADA)',
-          'playground' => 'Playground',
-          'playground-ada' => 'Playground (ADA)',
-          'potable' => 'Potable Water',
-          'potable-ada' => 'Potable Water (ADA)',
-          'reservable' => 'Reservable',
-          'restrooms' => 'Restrooms Flush',
-          'restrooms-ada' => 'Restrooms Flush (ADA)',
-          'shower' => 'Hot Shower',
-          'shower-ada' => 'Hot Shower (ADA)',
-          'swimming' => 'Swimming',
-          'tepee' => 'Tepee',
-          'tepee-ada' => 'Tepee (ADA)',
-          'vault' => 'Vault Toilets',
-          'vault-ada' => 'Vault Toilets (ADA)',
-          'viewpoint' => 'Viewpoint',
-          'viewpoint-ada' => 'Viewpoint (ADA)',
-          'wildlife' => 'Wildlife',
-          'wildlife-ada' => 'Wildlife (ADA)',
-          'windsurfing' => 'Windsurfing',
-          'yearround' => 'Open Year Round',
-          'yearround-ada' => 'Open Year Round (ADA)',
-          'yurt' => 'Yurt',
-          'yurt-ada' => 'Yurt (ADA)'
-        }
+        ACTIVITY_NAMES = [
+                          'Ampitheater',
+                          'Beach Access',
+                          'Beach Access (Accessible)',
+                          'Bike Path',
+                          'Bike Path (Accessible)',
+                          'Boat Ramp',
+                          'Cabin',
+                          'Cabin (Accessible)',
+                          'Cabins/Yurts Pets OK',
+                          'Cabins/Yurts Pets OK (Accessible)',
+                          'Camping',
+                          'Camping (Accessible)',
+                          'Day-Use Fee',
+                          'Deluxe Cabin',
+                          'Deluxe Cabin (Accessible)',
+                          'Deluxe Yurt',
+                          'Deluxe Yurt (Accessible)',
+                          'Disc Golf',
+                          'Dump Station',
+                          'Dump Station (Accessible)',
+                          'Exhibit Information',
+                          'Exhibit Information (Accessible)',
+                          'Fishing',
+                          'Fishing (Accessible)',
+                          'Hiker Biker',
+                          'Hiking Trails',
+                          'Hiking Trails (Accessible)',
+                          'Horse Trails',
+                          'Hot Shower',
+                          'Hot Shower (Accessible)',
+                          'Kayaking',
+                          'Marina',
+                          'Open Year Round',
+                          'Open Year Round (Accessible)',
+                          'Picnicking',
+                          'Picnicking (Accessible)',
+                          'Playground',
+                          'Playground (Accessible)',
+                          'Potable Water',
+                          'Reservable',
+                          'Restrooms Flush',
+                          'Restrooms Flush (Accessible)',
+                          'Swimming',
+                          'Tepee',
+                          'Vault Toilets',
+                          'Vault Toilets (Accessible)',
+                          'Viewpoint',
+                          'Viewpoint (Accessible)',
+                          'Wildlife',
+                          'Wildlife (Accessible)',
+                          'Windsurfing',
+                          'Yurt',
+                          'Yurt (Accessible)'
+                         ]
 
         # Map of feature codes to campground types.
 
@@ -109,46 +105,65 @@ module Cf
           cabin: [ 76, 92 ]		# 76: Yurts - Cabins, 92: Yurts - Cabins, Pets OK
         }
 
-        # Activity codes that indicate camping available.
+        # Activity names that indicate camping available.
 
-        CAMPING_ACTIVITY_CODES = [ 'cabin', 'cabin-ada', 'camping', 'camping-ada',
-                                   'deluxecabin', 'deluxecabin-ada', 'deluxeyurt-ada', 'pet', 'pet-ada',
-                                   # 'reservable',
-                                   'tepee', 'tepee-ada', 'yurt', 'yurt-ada' ]
+        CAMPING_ACTIVITY_NAMES = [ 'Cabin', 'Cabin (Accessible)',
+                                   'Cabins/Yurts Pets OK', 'Cabins/Yurts Pets OK (Accessible)',
+                                   'Camping', 'Camping (Accessible)',
+                                   'Deluxe Cabin', 'Deluxe Cabin (Accessible)',
+                                   'Deluxe Yurt', 'Deluxe Yurt (Accessible)',
+                                   'Tepee',
+                                   'Yurt', 'Yurt (Accessible)' ]
 
-        # Activity codes for listing activities.
+        # Activity names for listing activities.
 
-        ACTIVITY_ACTIVITY_CODES = [ 'dayuse', 'disc', 'fishing', 'fishing-ada', 'hiker',
-                                    'hiking', 'hiking-ada', 'kayak', 'picnic', 'picnic-ada', 'swimming',
-                                    'wildlife', 'wildlife-ada', 'windsurfing' ]
+        ACTIVITY_ACTIVITY_NAMES = [ 'Disc Golf',
+                                    'Fishing', 'Fishing (Accessible)',
+                                    'Hiker Biker',
+                                    'Kayaking',
+                                    'Picnicking', 'Picnicking (Accessible)',
+                                    'Swimming',
+                                    'Wildlife', 'Wildlife (Accessible)',
+                                    'Windsurfing' ]
 
-        # Activity codes for listing amenities.
+        # Activity names for listing amenities and facilities.
 
-        AMENITY_ACTIVITY_CODES = [ 'ampitheater', 'beach', 'beach-ada', 'bike', 'bike-ada', 'boat', 'boat-ada',
-                                   'dump', 'dump-ada', 'horse', 'marina', 'playground', 'playground-ada',
-                                   # 'reservable',
-                                   'viewpoint', 'viewpoint-ada', 'yearround', 'yearround-ada' ]
+        AMENITY_ACTIVITY_NAMES = [ 'Ampitheater',
+                                   'Beach Access', 'Beach Access (Accessible)',
+                                   'Bike Path', 'Bike Path (Accessible)',
+                                   'Boat Ramp',
+                                   'Day-Use Fee',
+                                   'Dump Station', 'Dump Station (Accessible)',
+                                   'Hiking Trails', 'Hiking Trails (Accessible)',
+                                   'Horse Trails',
+                                   'Marina',
+                                   'Open Year Round', 'Open Year Round (Accessible)',
+                                   'Playground', 'Playground (Accessible)',
+                                   'Reservable',
+                                   'Viewpoint', 'Viewpoint (Accessible)' ]
 
-        # Activity codes for information center facilities.
+        # Activity names for information center facilities.
 
-        LEARNING_ACTIVITY_CODES = [ 'exhibit', 'exhibit-ada' ]
+        LEARNING_ACTIVITY_NAMES = [ 'Exhibit Information', 'Exhibit Information (Accessible)' ]
 
-        # Activity codes for restroom facilities.
+        # Activity names for restroom facilities.
 
-        RESTROOM_ACTIVITY_CODES = [ 'pit', 'pit-ada', 'restrooms', 'restrooms-ada', 'vault', 'vault-ada' ]
+        RESTROOM_ACTIVITY_NAMES = [ 'Restrooms Flush', 'Restrooms Flush (Accessible)',
+                                    'Vault Toilets', 'Vault Toilets (Accessible)' ]
 
-        # Activity codes for water facilities.
+        # Activity names for water facilities.
 
-        WATER_ACTIVITY_CODES = [ 'potable', 'potable-ada', 'shower', 'shower-ada' ]
+        WATER_ACTIVITY_NAMES = [ 'Hot Shower', 'Hot Shower (Accessible)',
+                                 'Potable Water' ]
 
         # @!visibility private
         ACTIVITY_MAP = {
-          :campsite_types => CAMPING_ACTIVITY_CODES,
-          :activities => ACTIVITY_ACTIVITY_CODES,
-          :amenities => AMENITY_ACTIVITY_CODES,
-          :learning => LEARNING_ACTIVITY_CODES,
-          :restroom => RESTROOM_ACTIVITY_CODES,
-          :water => WATER_ACTIVITY_CODES
+          :campsite_types => CAMPING_ACTIVITY_NAMES,
+          :activities => ACTIVITY_ACTIVITY_NAMES,
+          :amenities => AMENITY_ACTIVITY_NAMES,
+          :learning => LEARNING_ACTIVITY_NAMES,
+          :restroom => RESTROOM_ACTIVITY_NAMES,
+          :water => WATER_ACTIVITY_NAMES
         }
 
         # Initializer.
@@ -159,9 +174,21 @@ module Cf
         #  See {Cf::Scrubber::Base#initializer}.
 
         def initialize(root_url = nil, opts = {})
+          @_acts_map = {}
           @_enable_global_features = false
           root_url = ROOT_URL unless root_url.is_a?(String)
           super(root_url, opts)
+        end
+
+        # @!attribute [r] activity_map
+        # A hash that, after a park list is loaded, contains the list of activities available in the
+        # various state parks. The keys are activity names, and the values arrays that contain the
+        # URL to the parks that offer that activity.
+        # @return [Hash] Returns a hash as described above. The hash is rebuilt with each call
+        #  to {build_park_list} or {build_overnight_park_list}.
+
+        def activity_map()
+          @_acts_map
         end
 
         # Extract the JSON fragment that contains the park list.
@@ -274,7 +301,7 @@ module Cf
 
               pfl = extract_park_features(doc, res.uri)
               ACTIVITY_MAP.each do |ak, al|
-                a = list_activities(pfl, al)
+                a = filter_activities(pfl, al)
                 add[ak] = a.join(', ') if a.count > 0
               end
 
@@ -319,12 +346,15 @@ module Cf
         def build_park_list(overnites_only = true, with_details = true)
           _init_global_features()
 
+          @_acts_map = {}
+
           rv = get_park_list_raw(overnites_only).map do |ple|
             build_park_data(ple, with_details)
           end
           if @_enable_global_features
             _global_features().keys.sort.each { |fk| self.output.printf("%-24s : #{_global_feature(fk)}\n", fk) }
           end
+
           rv
         end
 
@@ -344,6 +374,8 @@ module Cf
 
         def build_overnight_park_list(types = nil, with_details = true)
           _init_global_features()
+
+          @_acts_map = {}
 
           # OK so we need to get the park list for all features needed.
 
@@ -396,17 +428,8 @@ module Cf
 
         private
 
-        def has_activity?(fl, aid)
-          fl.include?(aid)
-        end
-
-        def list_activities(fl, alist)
-          l = [ ]
-          alist.each do |e|
-            l << ACTIVITY_CODES[e] if has_activity?(fl, e)
-          end
-
-          l
+        def filter_activities(fl, alist)
+          fl.select { |a| alist.include?(a) }
         end
 
         def has_class(n, c)
@@ -418,18 +441,27 @@ module Cf
 
         def scan_park_features(cn, park_uri)
           pf = [ ]
-          cn.css('p.clearfix a.park-guide-icon').each do |an|
-            an['class'].split.each do |e|
-              if e.index('park-guide-icon-') == 0
-                fid = e[16, e.length]
-                unless ACTIVITY_CODES.has_key?(fid)
-                  self.logger.warn { "unknown activity code (#{fid}) for park at (#{park_uri})" }
-                end
+          cn.css('div.park-icons div.park-icon').each do |pi|
+            an = pi.css('a.icon').first
+            act = an['data-original-title'] || an['title']
+            if act
+              pf << act
+              if @_acts_map.has_key?(act)
+                @_acts_map[act] << park_uri
+              else
+                @_acts_map[act] = [ park_uri ]
+              end
+              self.logger.warn("unregistered activity: #{act}") unless ACTIVITY_NAMES.include?(act)
 
-                f = { id: fid, name: an['title'] }
-                _add_global_feature(f)
-                pf << fid
-                break
+              if pi['class'].downcase.split.include?('accessible')
+                aact = act + ' (Accessible)'
+                pf << aact
+                if @_acts_map.has_key?(aact)
+                  @_acts_map[aact] << park_uri
+                else
+                  @_acts_map[aact] = [ park_uri ]
+                end
+                self.logger.warn("unregistered activity: #{aact}") unless ACTIVITY_NAMES.include?(aact)
               end
             end
           end
