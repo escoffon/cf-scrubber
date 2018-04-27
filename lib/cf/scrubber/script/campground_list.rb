@@ -14,7 +14,9 @@ module Cf
         # - <tt>-t TYPES</tt> (<tt>--types=TYPES</tt>) to select parks that contain the given accommodation
         #   types.
         # - <tt>-D DATAFORMAT</tt> (<tt>--data-format=DATAFORMAT</tt>) is the output format to use: +raw+,
-        #   +json+, or +name+. Defaults to +json+.
+        #   +json+, or +name+. The +json+ format can include an integer containing the indentation level
+        #   for the generated output; for example, +json:2+ generates a formatted output with a two-space
+        #   indentation level. Defaults to +json+.
 
         class Parser < Cf::Scrubber::Script::Parser
           # The known (and supported) data formats.
@@ -25,9 +27,18 @@ module Cf
             rv = super()
             opts = self.parser
 
-            opts.on_head("-DDATAFORMAT", "--data-format=DATAFORMAT", "The output format to use: raw, json, or name.") do |f|
-              f = f.to_sym
-              self.options[:data_format] = f if DATA_FORMATS.include?(f)
+            opts.on_head("-DDATAFORMAT", "--data-format=DATAFORMAT", "The output format to use: raw, json, or name. Use json:N to output formatted JSON with N spaces indentation.") do |f|
+              if f =~ /^json\:([0-9]+)/i
+                m = Regexp.last_match
+                self.options[:data_format] = :json
+                self.options[:json_opts] = { indent: sprintf("%#{m[1].to_i}s", ' ') }
+              else
+                f = f.to_sym
+                if DATA_FORMATS.include?(f)
+                  self.options[:data_format] = f
+                  self.options[:json_opts] = false
+                end
+              end
             end
 
             opts.on_head("-tTYPES", "--types=TYPES", "Comma-separated list of types of campground to list. Lists all types if not given.") do |tl|
@@ -40,7 +51,7 @@ module Cf
               self.options[:all] = true
             end
 
-            self.options.merge!({ data_format: :json, all: false, types: nil })
+            self.options.merge!({ data_format: :json, json_opts: false, all: false, types: nil })
 
             rv
           end
@@ -90,7 +101,11 @@ module Cf
             self.output.print("#{pd}\n");
           when :json
             self.output.print("#-- Campground #{pd[:signature]}\n")
-            self.output.print("#{JSON.generate(pd)}\n")
+            if self.parser.options[:json_opts] == false
+              self.output.print("#{JSON.generate(pd)}\n")
+            else
+              self.output.print("#{JSON.pretty_generate(pd, self.parser.options[:json_opts])}\n")
+            end
           when :name
             self.output.print("#{pd[:name]} -- #{pd[:signature]}\n")
           else
