@@ -3290,6 +3290,16 @@ module Cf::Scrubber::USDA
         url: 'http://www.fs.usda.gov/arp'
       },
       #-- added by hand
+      'Arapaho & Roosevelt National Forests' => {
+        name: 'Arapaho & Roosevelt National Forests',
+        remap: 'Arapaho & Roosevelt National Forests Pawnee NG'
+      },
+      #-- added by hand
+      'Arapaho and Roosevelt National Forests' => {
+        name: 'Arapaho and Roosevelt National Forests',
+        remap: 'Arapaho & Roosevelt National Forests Pawnee NG'
+      },
+      #-- added by hand
       'Arapaho & Roosevelt National Forests Pawnee NG' => {
         name: 'Arapaho & Roosevelt National Forests Pawnee NG',
         ridb_id: 1051,
@@ -3318,12 +3328,17 @@ module Cf::Scrubber::USDA
         url: 'http://www.fs.usda.gov/gmug'
       },
       #-- added by hand
-      'Grand Mesa, Uncompahgre and Gunnison National Fore' => {
-        name: 'Grand Mesa, Uncompahgre and Gunnison National Fore',
+      'Grand Mesa, Uncompahgre and Gunnison National Forests' => {
+        name: 'Grand Mesa, Uncompahgre and Gunnison National Forests',
         ridb_id: 1052,
         usfs_id: 32366,
         label: 'gmug',
         url: 'http://www.fs.usda.gov/gmug'
+      },
+      #-- added by hand
+      'Grand Mesa, Uncompahgre and Gunnison National Fore' => {
+        name: 'Grand Mesa, Uncompahgre and Gunnison National Fore',
+        remap: 'Grand Mesa, Uncompahgre and Gunnison National Forests'
       },
       #-- clustered in 'Grand Mesa, Uncompahgre and Gunnison National Fore'
       'Gunnison National Forest' => {
@@ -3337,11 +3352,12 @@ module Cf::Scrubber::USDA
       #-- clustered in 'Medicine Bow-Routt NFs & Thunder Basin NG'
       'Medicine Bow National Forest' => {
         name: 'Medicine Bow National Forest',
-        remap: 'Medicine Bow-Routt NFs & Thunder Basin NG',
-        ridb_id: 1059,
-        usfs_id: 22482,
-        label: 'mbr',
-        url: 'http://www.fs.usda.gov/mbr'
+        remap: 'Medicine Bow-Routt NFs & Thunder Basin NG'
+      },
+      #-- clustered in 'Medicine Bow-Routt NFs & Thunder Basin NG'
+      'Medicine Bow-Routt National Forest' => {
+        name: 'Medicine Bow National Forest',
+        remap: 'Medicine Bow-Routt NFs & Thunder Basin NG'
       },
       #-- added by hand
       'Medicine Bow-Routt NFs & Thunder Basin NG' => {
@@ -3354,20 +3370,17 @@ module Cf::Scrubber::USDA
       #-- clustered in 'Arapaho & Roosevelt National Forests Pawnee NG'
       'Pawnee National Grassland' => {
         name: 'Pawnee National Grassland',
-        remap: 'Arapaho & Roosevelt National Forests Pawnee NG',
-        ridb_id: 1051,
-        usfs_id: 28024,
-        label: 'arp',
-        url: 'http://www.fs.usda.gov/arp'
+        remap: 'Arapaho & Roosevelt National Forests Pawnee NG'
       },
       #-- clustered in 'PSICC'
       'Pike National Forest' => {
         name: 'Pike National Forest',
-        remap: 'PSICC',
-        ridb_id: 1053,
-        usfs_id: 12403,
-        label: 'psicc',
-        url: 'http://www.fs.usda.gov/psicc'
+        remap: 'PSICC'
+      },
+      #-- clustered in 'PSICC'
+      'Pike and San Isabel National Forests' => {
+        name: 'Pike and San Isabel National Forests',
+        remap: 'PSICC'
       },
       #-- added by hand
       'PSICC' => {
@@ -3477,6 +3490,11 @@ module Cf::Scrubber::USDA
       # state: FM
 
       # state: GA
+      #-- added by hand - also known as 'Chattahoochee-Oconee National Forest'
+      'Chattahoochee-Oconee National Forests' => {
+        name: 'Chattahoochee-Oconee National Forests',
+        remap: 'Chattahoochee-Oconee National Forest'
+      },
       'Chattahoochee-Oconee National Forest' => {
         name: 'Chattahoochee-Oconee National Forest',
         ridb_id: 1040,
