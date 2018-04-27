@@ -12,6 +12,7 @@ module Cf
       #   If not present, use STDERR.
       # - <tt>-v LEVEL</tt> (<tt>--verbosity=LEVEL</tt>) Sets the logger level; this is one of the level
       #   constants defined by the Logger class (WARN, INFO, etc...). Defaults to WARN.
+      # - <tt>-g KEY</tt> (<tt>--google-api-key=KEY</tt>) The API key to use for Google APIs.
       # - <tt>-?</tt> Show help; we use <tt>-?</tt> instead of <tt>-h</tt> because the Rails console runner
       #   catches <tt>-h</tt>.
       #
@@ -57,13 +58,17 @@ module Cf
               self.options[:logger_level] = "Logger::#{l}"
             end
 
+            opts.on("-gKEY", "--google-api-key=KEY", "Set the key used by Google APIs.") do |k|
+              self.options[:google_api_key] = k
+            end
+
             opts.on("-?", "Show help") do
               puts opts
               exit
             end
           end
 
-          @options = { out_file: nil, log_file: nil, logger_level: Logger::WARN }
+          @options = { out_file: nil, log_file: nil, logger_level: Logger::WARN, google_api_key: nil }
         end
 
         # Parse options and return them.

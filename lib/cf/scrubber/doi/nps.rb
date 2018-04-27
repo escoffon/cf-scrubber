@@ -10,6 +10,8 @@ require 'cf/scrubber/base'
 require 'cf/scrubber/states_helper'
 require 'cf/scrubber/ridb/api'
 
+require 'fl/google/api/maps/geocoding'
+
 module Cf
   module Scrubber
     module DOI
@@ -51,6 +53,8 @@ module Cf
           @facility_to_rec_area = {}
 
           @ridb = Cf::Scrubber::RIDB::API.new(opts)
+
+          @geocode = Fl::Google::API::Maps::Geocoding.new(api_key: opts[:google_api_key])
 
           root_url = ROOT_URL unless root_url.is_a?(String)
           super(root_url, opts)
@@ -344,9 +348,7 @@ module Cf
               end
             end
 
-            if fac.has_key?('FacilityLatitude') && fac.has_key?('FacilityLongitude')
-              c[:location] = { lat: fac['FacilityLatitude'], lon: fac['FacilityLongitude'] }
-            end
+            extract_location(fac, c)
 
             ai = {
               description: fac['FacilityDescription']
@@ -371,6 +373,125 @@ module Cf
         end
           
         private
+
+        def split_address(a)
+          a.split(/\s+/).reduce([]) do |rv, e|
+            e.split(/[^a-zA-Z0-9]+/).each { |ee| rv << ee.downcase }
+            rv
+          end
+        end
+
+        def extract_location_from_multiple_results(res, fac, c)
+          c_names = split_address(c[:name])
+          
+          # This method applies some heuristics to the multiple results to see if we can pick one:
+          # 1. filter out any results whose first address component does not claim to be a campground.
+          # 2. score any of the remaining results.
+          #    - add 2 if the short name of the first address component contains all the names from the
+          #      facility name.
+          #    - add 1 if the facility name contains all the names in the short name of the
+          #      first address component (so, the inverse containment relationship).
+          # 3. pick the highest score, as long as the score is greater than 0. In case of a tie, give up.
+          #    If no score is greater than 0, give up (which is a tie, really...).
+          #
+          # For example, the address "Echo Park Campground Dinosaur National Monument Utah" returns
+          # two results, with short names "Echo Park Campground" and "Dinosaur National Monument".
+          # The first result is marked as a campground, the second is not, so only one result is considered.
+          # The facility name is "Echo Park Campground", and therefore the first result gets a score of 2.
+          # Since 2 > 0, we return the location of the first result.
+          #
+          # Now consider "Primitive Campsites At Cedar Mesa Campground Capitol Reef National Park Utah", which
+          # returns "Cedar Mesa Campground" and "Capitol Reef National Park".
+          # Only the first result is marked as a campground.
+          # In this case, the facility name ("Primitive Campsites At Cedar Mesa Campground") is overspecified,
+          # but the result gets a score of 1, since "Cedar mesa Campground" is fully contained by the
+          # facility name.
+          # Since 1 > 0, we return the location of the first result.
+          #
+          # Now consider "Mid-hills Campground Mojave National Preserve California", which returns
+          # "Mohave National Preserve" and "Mid Hills", neither of which is marked as a campground.
+          # Therefore, there is no match.
+          #
+          # Finally, look at "Gates Of Lodore Campground Dinosaur National Monument Utah", which returns two
+          # results, "Gates of Lodore" and "Gates of Lodore". Only the second is marked as a campground;
+          # additionally, it gets a score of 1 because the facility name "Gates Of Lodore Campground" is not
+          # fully contained by the short address, but the short address is fully contained by the facility
+          # name. This is really the same case as
+          # "Primitive Campsites At Cedar Mesa Campground Capitol Reef National Park Utah".
+
+          rlist = res['results'].select { |e| e['address_components'][0]['types'].include?('campground') }
+          max = 0
+          scores = rlist.map do |e|
+            a0 = split_address(e['address_components'][0]['short_name'])
+
+            diff = c_names - a0
+            if diff.count < 1
+              max = 2
+              2
+            else
+              diff = a0 - c_names
+              if diff.count < 1
+                max = 1 unless max == 2
+                1
+              else
+                0
+              end
+            end
+          end
+
+          if max > 0
+            slist = []
+            scores.each_with_index { |e, idx| slist << idx if e == max }
+            if slist.count == 1
+              gl = res['results'][slist.first]['geometry']['location']
+
+              return {
+                lat: sprintf("%.6f", gl['lat']),
+                lon: sprintf("%.6f", gl['lng'])
+              }
+            end
+
+            self.logger.warn { "too many geocoding results for #{c[:name]} - location was not set" }
+          end
+
+          { lat: '', lon: '' }
+        end
+
+        def extract_location(fac, c)
+          loc = { lat: '', lon: '' }
+
+          loc[:lat] = fac['FacilityLatitude'] if fac.has_key?('FacilityLatitude')
+          loc[:lon] = fac['FacilityLongitude'] if fac.has_key?('FacilityLongitude')
+
+          if (loc[:lat].is_a?(String) && loc[:lat].length < 1) || (loc[:lon].is_a?(String) && loc[:lon].length < 1)
+            address = c[:name] + ' ' + c[:area] + ' ' + c[:region]
+            res = @geocode.geocode(address)
+
+            case res['status']
+            when 'OK'
+              if res['results'].count > 1
+                loc = extract_location_from_multiple_results(res, fac, c)
+              else
+                gl = res['results'][0]['geometry']['location']
+
+                loc[:lat] = sprintf("%.6f", gl['lat'])
+                loc[:lon] = sprintf("%.6f", gl['lng'])
+              end
+
+              if (loc[:lat].length > 0) && (loc[:lon].length > 0)
+                self.logger.warn { "using geocoding location for #{c[:name]}) - #{loc}" }
+              end
+            when 'ZERO_RESULTS'
+              self.logger.warn { "geocoding call found no match for #{c[:name]}) - location was not set" }
+            else
+              msg = res['status']
+              msg += ':' + res['error_message'] if res['error_message']
+              self.logger.warn { "geocoding call failed for #{c[:name]} (#{msg}) - location was not set" }
+            end
+          end
+
+          c[:location] = loc
+        end
 
         def digest_hash(hash)
           s = ""

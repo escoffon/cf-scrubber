@@ -52,8 +52,9 @@ Gem::Specification.new do |s|
                     'Rakefile',
                     '.yardopts'
                   ]
-  s.add_dependency 'nokogiri', '~> 1.6'
-  s.add_dependency 'json', '~> 1.8'
+  s.add_runtime_dependency 'nokogiri', '~> 1.6'
+  s.add_runtime_dependency 'json', '~> 1.8'
+  s.add_runtime_dependency 'fl-google'
 
   s.add_development_dependency 'minitest'
 end

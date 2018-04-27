@@ -127,6 +127,7 @@ module Cf::Scrubber::DOI::Script::NPS
       end
 
       nps = Cf::Scrubber::DOI::NPS.new(nil, {
+                                         :google_api_key => self.parser.options[:google_api_key],
                                          :output => self.parser.options[:output],
                                          :logger => self.parser.options[:logger],
                                          :logger_level => self.parser.options[:logger_level]
