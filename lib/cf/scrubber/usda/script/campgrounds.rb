@@ -139,7 +139,7 @@ module Cf
               forests = if self.parser.options[:forests].is_a?(Array)
                           self.parser.options[:forests]
                         else
-                          Cf::Scrubber::USDA::USFSHelper.forests_for_state(s).keys
+                          Cf::Scrubber::USDA::USFSHelper.forests_for_state(s)
                         end
               fdl, unresolved = Cf::Scrubber::USDA::USFSHelper.convert_forest_descriptors(forests)
               unresolved.each do |u|
