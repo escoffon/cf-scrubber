@@ -65,6 +65,8 @@ module Cf
       #  otherwise.
 
       def check_for_site(type, params = {})
+        return false unless @root_url.query
+
         surl = "https://#{@root_url.host}#{CAMPSITE_SEARCH_PATH}?#{@root_url.query}"
 
         # parkId and contractCode should come from the root URL
