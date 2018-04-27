@@ -38,16 +38,15 @@ module Cf
         # out using reserveamerica. Similarly for GROUP.
 
         CAMPING_ACTIVITIES = [
-                              [ Regexp.new('^Map$', Regexp::IGNORECASE), nil ],
-                              [ Regexp.new('^Tent & RV$', Regexp::IGNORECASE),
+                              [ '/tent-rv',
                                 [ Cf::Scrubber::Base::TYPE_STANDARD ] ],
-                              [ Regexp.new('^Cabins$', Regexp::IGNORECASE),
+                              [ '/cabins',
                                 [ Cf::Scrubber::Base::TYPE_CABIN ] ],
-                              [ Regexp.new('^Canvas Tent$', Regexp::IGNORECASE),
+                              [ '/canvas-tent',
                                 [ Cf::Scrubber::Base::TYPE_CABIN ] ],
-                              [ Regexp.new('^Teepees$', Regexp::IGNORECASE),
+                              [ '/teepees',
                                 [ Cf::Scrubber::Base::TYPE_CABIN ] ],
-                              [ Regexp.new('^Yurts$', Regexp::IGNORECASE),
+                              [ '/yurts',
                                 [ Cf::Scrubber::Base::TYPE_CABIN ] ]
                              ]
 
@@ -100,8 +99,8 @@ module Cf
 
         def has_campgrounds?(lpd)
           uri = lpd[:uri]
-          if uri
-            types = camping_map[uri.downcase]
+          if uri && camping_map.has_key?(uri.downcase)
+            types = camping_map[uri.downcase][:types]
             (types && (types.length > 0)) ? true : false
           else
             false
@@ -208,47 +207,28 @@ module Cf
 
         def camping_map()
           if @camping_map.nil?
-            # first of all, get the "Camping" page
-
-            main_menubar, main_doc = get_main_menu_bar()
-            if main_menubar
-              activities_item = get_menu_item(main_menubar, 'activities')
-              activities_submenu = get_main_menu_item_submenu(activities_item)
-              camping_url = get_submenu_item_href(get_submenu_item(activities_submenu, 'camping'))
-              camping_url = CAMPING_URL unless camping_url.is_a?(String)
-
-              camping_menubar, camping_doc = get_park_menu_bar(nil, normalize_uri(camping_url))
-              if camping_menubar
-                @camping_map = { }
+            @camping_map = { }
             
-                camping_menubar.css("> li > a").each do |li_a|
-                  label = li_a.text().strip
-                  CAMPING_ACTIVITIES.each do |act|
-                    if label =~ act[0]
-                      res_a = get(normalize_uri(li_a['href']), {
-                                    headers: {
-                                      'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-                                    }
-                                  })
-                      if res_a.is_a?(Net::HTTPOK)
-                        href_re = /(.*)\/park-fees\/?/i
-                        href_re_2 = /(.*)\/new-tent-cabins-at-palisade-state-park\/?/i
-                        doc_a = Nokogiri::HTML(res_a.body)
-                        doc_a.css('article p > a.pkbutton').each do |pk_a|
-                          # The park link is to the park-fees subpath, so we need to remove that.
-                          # At least one link is to a different subpath (that would be Palisade State Park).
+            CAMPING_ACTIVITIES.each do |act|
+              url = normalize_uri(CAMPING_URL + act[0])
+              res_a = get(url, {
+                            headers: {
+                              'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                            }
+                          })
+              if res_a.is_a?(Net::HTTPOK)
+                href_re = /(.*)\/park-fees\/?/i
+                href_re_2 = /(.*)\/new-tent-cabins-at-palisade-state-park\/?/i
+                doc_a = Nokogiri::HTML(res_a.body)
+                doc_a.css('article p > a.pkbutton').each do |pk_a|
+                  # The park link is to the park-fees subpath, so we need to remove that.
+                  # At least one link is to a different subpath (that would be Palisade State Park).
 
-                          href = normalize_uri(pk_a['href']).to_s.downcase
-                          href = Regexp.last_match[1] if (href =~ href_re) || (href =~ href_re_2)
+                  href = normalize_uri(pk_a['href']).to_s.downcase
+                  href = Regexp.last_match[1] if (href =~ href_re) || (href =~ href_re_2)
 
-                          @camping_map[href] = [] unless @camping_map.has_key?(href)
-                          @camping_map[href] |= act[1]
-                        end
-                      end
-
-                      break
-                    end
-                  end
+                  @camping_map[href] = [ ] unless @camping_map.has_key?(href)
+                  @camping_map[href] |= act[1]
                 end
               end
             end
@@ -401,7 +381,10 @@ module Cf
             return Regexp.last_match[1] if txt =~ re
           end
 
-          nil
+          # OK if we are here it's likely because the reservelinkupdater call has an empty argument
+          # (which seems to be the case now). In this case, use the last element of the URI's path
+
+          (uri) ? park_slug_from_uri(uri) : nil
         end
 
         # Given a list of parks, load their :types property.
@@ -672,15 +655,15 @@ module Cf
           plist
         end
 
-        def extract_park_reservation_uri(doc)
-          park_slug = get_park_slug(doc)
-          rmap = park_slugs_to_reservation_uris_map
-          if rmap.has_key?(park_slug)
-            RESERVEAMERICA_ROOT_URL + rmap[park_slug]
-          else
-            self.logger.warn("no reservation URI for park slug (#{park_slug})")
-            nil
-          end
+        def park_slug_from_uri(uri)
+          u = URI::parse(uri)
+          u.path.split('/').last
+        end
+
+        def extract_park_reservation_uri(doc, park_uri)
+          slug = park_slug_from_uri(park_uri)
+          ruri = park_slugs_to_reservation_uris_map[slug]
+          (ruri) ? RESERVEAMERICA_ROOT_URL + ruri : nil
         end
           
         COORDINATES_ORDER = [ 'Park Office', 'Entrance Station', 'Parking Lot' ]
@@ -692,20 +675,16 @@ module Cf
           if park_doc
             # 1. the reservation URI
 
-            main_menubar, park_doc = get_main_menu_bar(park_doc)
-            reserve_item = get_menu_item(main_menubar, 'reserve')
-            if reserve_item
-              ruri = extract_park_reservation_uri(park_doc)
-              if ruri
-                rv[:reservation_uri] = ruri
-              else
-                self.logger.warn("could not extract park reservation URI (#{mdata[:name]})")
-              end
+            ruri = extract_park_reservation_uri(park_doc, mdata[:uri])
+            if ruri
+              rv[:reservation_uri] = ruri
+            else
+              self.logger.warn("could not extract park reservation URI (#{mdata[:name]})")
             end
 
             # 2. the amenities and the location
 
-            park_slug = get_park_slug(park_doc)
+            park_slug = get_park_slug(park_doc, mdata[:uri])
             if park_slug.nil?
               self.logger.warn("could not extract park slug for park (#{mdata[:name]})")
             else
